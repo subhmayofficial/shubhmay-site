@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chamunda Mahamantra | VedGuide</title>
+  <meta name="description" content="Chamunda Mahamantra based landing page. Fill the form to unlock and get your mantra routine + free kundli check.">
+  <link rel="icon" href="assets/images/favicon-32x32.png" type="image/png" sizes="32x32">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="/js/shubhmay-track.js" defer></script>
+  <style>
+    :root {
+      --maroon:   #1e0610;
+      --maroon2:  #2e0d1a;
+      --maroon3:  #3f1120;
+      --gold1:    #f7d07a;
+      --gold2:    #e0a93a;
+      --gold3:    #9f6f1d;
+      --saffron:  #f08c3b;
+      --cream:    #fff9ef;
+      --c-dark:   #2e1a0e;
+      --c-muted:  #6b5548;
+      --ok:       #1f9d5a;
+      --err:      #d64545;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Inter", sans-serif;
+      background: var(--maroon);
+      color: var(--cream);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative;
+      text-align: center;
+      padding: 52px 20px 44px;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse 70% 55% at 50% 0%, rgba(247,208,122,.22) 0%, transparent 70%),
+        linear-gradient(180deg, #2e0d1a 0%, #1e0610 100%);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='600' height='600' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='300' cy='300' r='290' fill='none' stroke='rgba(247,208,122,0.06)' stroke-width='1'/%3E%3Ccircle cx='300' cy='300' r='240' fill='none' stroke='rgba(247,208,122,0.04)' stroke-width='1'/%3E%3C/svg%3E") center/cover;
+      pointer-events: none;
+    }
+
+    .om-glyph {
+      font-size: clamp(4rem, 12vw, 7rem);
+      line-height: 1;
+      margin-bottom: 16px;
+      display: block;
+      filter: drop-shadow(0 0 28px rgba(247,208,122,.55));
+      animation: pulse-glow 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { filter: drop-shadow(0 0 22px rgba(247,208,122,.45)); }
+      50%       { filter: drop-shadow(0 0 42px rgba(247,208,122,.85)); }
+    }
+
+    .hero-badge {
+      display: inline-block;
+      border: 1px solid rgba(247,208,122,.5);
+      color: var(--gold1);
+      font-size: .75rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 999px;
+      margin-bottom: 14px;
+    }
+
+    .hero h1 {
+      font-family: "Cinzel", serif;
+      font-size: clamp(1.6rem, 4.5vw, 2.8rem);
+      font-weight: 900;
+      color: var(--gold1);
+      text-shadow: 0 2px 24px rgba(247,208,122,.4);
+      line-height: 1.2;
+      margin-bottom: 10px;
+    }
+
+    .hero-sub {
+      color: rgba(255,240,200,.7);
+      font-size: .98rem;
+      max-width: 520px;
+      margin: 0 auto;
+      line-height: 1.55;
+    }
+
+    /* ── MAIN CONTENT ── */
+    .page-body {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 28px 16px 60px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* ── FORM CARD ── */
+    .form-card {
+      background: var(--cream);
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0,0,0,.4);
+      border: 1px solid rgba(247,208,122,.2);
+    }
+
+    .form-head {
+      background: linear-gradient(120deg, #3f1120, #2a0c17);
+      padding: 18px 22px;
+      border-bottom: 1px solid rgba(247,208,122,.25);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .step-pill {
+      background: var(--gold2);
+      color: #2e1a0e;
+      font-weight: 700;
+      font-size: .75rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      letter-spacing: .04em;
+      white-space: nowrap;
+    }
+
+    .form-head-text h2 {
+      font-family: "Cinzel", serif;
+      font-size: 1.1rem;
+      color: var(--gold1);
+    }
+
+    .form-head-text p {
+      font-size: .82rem;
+      color: rgba(255,240,200,.65);
+      margin-top: 2px;
+    }
+
+    .form-body {
+      padding: 22px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+
+    label {
+      font-size: .85rem;
+      font-weight: 600;
+      color: #5a3820;
+    }
+
+    input[type="text"],
+    input[type="tel"] {
+      border: 1.5px solid #e2ceaf;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: .98rem;
+      font-family: inherit;
+      color: var(--c-dark);
+      background: #fffdf9;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--gold2);
+      box-shadow: 0 0 0 3px rgba(224,169,58,.18);
+    }
+
+    .unlock-btn {
+      margin-top: 14px;
+      width: 100%;
+      border: 0;
+      border-radius: 999px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #2e1a0e;
+      padding: 15px;
+      background: linear-gradient(120deg, var(--gold1), var(--saffron));
+      box-shadow: 0 10px 28px rgba(240,140,59,.38);
+      transition: transform .2s, box-shadow .2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .unlock-btn::after {
+      content: "";
+      position: absolute;
+      top: 0; left: -100%;
+      width: 60%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent);
+      animation: btn-gloss 2.4s ease-in-out infinite;
+    }
+
+    @keyframes btn-gloss {
+      0%   { left: -100%; }
+      50%, 100% { left: 140%; }
+    }
+
+    .unlock-btn:hover  { transform: translateY(-2px); box-shadow: 0 14px 34px rgba(240,140,59,.5); }
+    .unlock-btn:disabled { opacity: .75; cursor: not-allowed; transform: none; }
+
+    .form-note {
+      text-align: center;
+      font-size: .76rem;
+      color: var(--c-muted);
+      margin-top: 8px;
+    }
+
+    .msg { min-height: 18px; font-size: .85rem; text-align: center; margin-top: 4px; }
+    .msg.err { color: var(--err); }
+    .msg.ok  { color: var(--ok); }
+
+    /* ── RESULT SECTION ── */
+    .result-section {
+      display: none;
+      animation: rise .5s cubic-bezier(.22,1,.36,1);
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* greeting banner */
+    .greeting-banner {
+      background: linear-gradient(120deg, #3f1120, #2a0c17);
+      border: 1px solid rgba(247,208,122,.3);
+      border-radius: 16px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .greeting-banner .g-icon { font-size: 2rem; flex-shrink: 0; }
+    .greeting-banner h3 {
+      font-family: "Cinzel", serif;
+      font-size: 1rem;
+      color: var(--gold1);
+    }
+    .greeting-banner p { font-size: .82rem; color: rgba(255,240,200,.65); margin-top: 2px; }
+
+    /* ── MAHAMANTRA BLOCK ── */
+    .mantra-card {
+      margin-top: 18px;
+      background: linear-gradient(135deg, rgba(247,208,122,.14), rgba(240,140,59,.10));
+      border: 1px solid rgba(247,208,122,.28);
+      border-radius: 18px;
+      padding: 18px 18px;
+      text-align: center;
+    }
+
+    .mantra-title {
+      font-family: "Cinzel", serif;
+      font-size: 1.05rem;
+      color: var(--gold1);
+      letter-spacing: .04em;
+      margin-bottom: 10px;
+    }
+
+    .mantra-sanskrit {
+      font-family: "Cinzel", serif;
+      font-weight: 900;
+      font-size: clamp(1.2rem, 4vw, 1.55rem);
+      color: #fff2cc;
+      text-shadow: 0 2px 22px rgba(247,208,122,.22);
+      margin-bottom: 8px;
+      line-height: 1.25;
+    }
+
+    .mantra-meaning {
+      font-size: .9rem;
+      color: rgba(255,240,200,.72);
+      line-height: 1.55;
+    }
+
+    .mantra-routine {
+      margin-top: 12px;
+      display: grid;
+      gap: 10px;
+      text-align: left;
+      background: rgba(30,6,16,.35);
+      border: 1px solid rgba(247,208,122,.18);
+      border-radius: 14px;
+      padding: 12px 12px;
+    }
+
+    .routine-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .routine-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold1), var(--saffron));
+      color: #1e0610;
+      font-weight: 900;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 22px;
+      margin-top: 2px;
+    }
+
+    .routine-text {
+      font-size: .86rem;
+      color: rgba(255,240,200,.7);
+      line-height: 1.45;
+    }
+
+    /* ── FREE KUNDLI CTA BLOCK ── */
+    .kundli-cta-block {
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0,0,0,.45);
+      position: relative;
+    }
+
+    .cta-visual-top {
+      background: linear-gradient(120deg, #3d0e1f, #5c1a2e);
+      padding: 28px 22px 0;
+      text-align: center;
+      position: relative;
+    }
+
+    .cta-visual-top::before {
+      content: "";
+      position: absolute;
+      top: -30px; left: 50%;
+      transform: translateX(-50%);
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(247,208,122,.25), transparent 60%);
+      pointer-events: none;
+    }
+
+    .cta-eyebrow {
+      display: inline-block;
+      background: rgba(247,208,122,.15);
+      border: 1px solid rgba(247,208,122,.4);
+      color: var(--gold1);
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 999px;
+      margin-bottom: 14px;
+    }
+
+    .cta-visual-top h2 {
+      font-family: "Cinzel", serif;
+      font-size: clamp(1.3rem, 3.5vw, 1.9rem);
+      color: var(--gold1);
+      line-height: 1.25;
+      margin-bottom: 6px;
+    }
+
+    .cta-visual-top .cta-tagline {
+      color: rgba(255,240,200,.7);
+      font-size: .9rem;
+      margin-bottom: 20px;
+    }
+
+    /* chart mockup */
+    .chart-mockup {
+      display: flex;
+      justify-content: center;
+      margin-bottom: -2px;
+    }
+
+    .chart-box {
+      width: min(260px, 72vw);
+      aspect-ratio: 1;
+      background: linear-gradient(145deg, #fff8ec, #ffecc8);
+      border-radius: 14px 14px 0 0;
+      border: 1px solid rgba(224,169,58,.45);
+      border-bottom: none;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 -8px 30px rgba(247,208,122,.18);
+    }
+
+    .chart-box::before {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border: 1px solid rgba(224,169,58,.3);
+      border-radius: 8px;
+    }
+
+    .chart-lines {
+      position: absolute;
+      inset: 12px;
+    }
+
+    .chart-lines::before,
+    .chart-lines::after {
+      content: "";
+      position: absolute;
+      background: rgba(224,169,58,.2);
+    }
+
+    .chart-lines::before {
+      top: 50%; left: 0; right: 0; height: 1px;
+    }
+
+    .chart-lines::after {
+      left: 50%; top: 0; bottom: 0; width: 1px;
+    }
+
+    .chart-label {
+      position: absolute;
+      font-family: "Cinzel", serif;
+      font-size: .6rem;
+      font-weight: 700;
+      color: rgba(159,111,29,.7);
+      letter-spacing: .06em;
+    }
+
+    .chart-label.top-left  { top: 18px; left: 18px; }
+    .chart-label.top-right { top: 18px; right: 18px; }
+    .chart-label.bot-left  { bottom: 18px; left: 18px; }
+    .chart-label.bot-right { bottom: 18px; right: 18px; }
+    .chart-label.center    {
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: .85rem;
+      color: rgba(159,111,29,.55);
+    }
+
+    .chart-dots {
+      position: absolute;
+      inset: 0;
+    }
+
+    .cdot {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--gold2);
+    }
+
+    /* benefit chips */
+    .benefit-chips {
+      background: var(--cream);
+      padding: 20px 22px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .chip {
+      background: linear-gradient(135deg, #fff, #fff6e8);
+      border: 1px solid rgba(224,169,58,.3);
+      border-radius: 12px;
+      padding: 12px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .chip-icon {
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+
+    .chip-label {
+      font-size: .82rem;
+      font-weight: 600;
+      color: var(--c-dark);
+      line-height: 1.3;
+    }
+
+    .chip-sub {
+      font-size: .72rem;
+      color: var(--c-muted);
+      font-weight: 400;
+    }
+
+    /* cta bottom */
+    .cta-bottom {
+      background: var(--cream);
+      padding: 4px 22px 26px;
+      border-top: 1px dashed rgba(224,169,58,.35);
+    }
+
+    .free-tag-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .free-tag {
+      font-size: .72rem;
+      color: var(--c-muted);
+      background: rgba(224,169,58,.12);
+      border: 1px solid rgba(224,169,58,.3);
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    .big-cta {
+      display: block;
+      width: 100%;
+      text-align: center;
+      text-decoration: none;
+      border-radius: 999px;
+      padding: 17px;
+      font-family: "Cinzel", serif;
+      font-size: clamp(.95rem, 2.5vw, 1.15rem);
+      font-weight: 700;
+      color: #1e0610;
+      background: linear-gradient(120deg, var(--gold1), var(--saffron));
+      box-shadow: 0 12px 32px rgba(240,140,59,.45);
+      position: relative;
+      overflow: hidden;
+      transition: transform .2s, box-shadow .2s;
+    }
+
+    .big-cta::after {
+      content: "";
+      position: absolute;
+      top: 0; left: -100%;
+      width: 55%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent);
+      animation: cta-gloss 2.2s ease-in-out infinite;
+    }
+
+    @keyframes cta-gloss {
+      0%        { left: -100%; }
+      50%, 100% { left: 140%; }
+    }
+
+    .big-cta:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(240,140,59,.6); }
+
+    /* social proof ticker */
+    .social-proof-ticker {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(31,157,90,.15);
+      border: 1px solid rgba(31,157,90,.35);
+      color: #b7f5d0;
+      font-size: .78rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 999px;
+      margin-bottom: 16px;
+    }
+
+    .proof-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #1f9d5a;
+      box-shadow: 0 0 0 0 rgba(31,157,90,.5);
+      animation: proof-ping 1.6s ease-out infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes proof-ping {
+      0%  { box-shadow: 0 0 0 0 rgba(31,157,90,.55); }
+      70% { box-shadow: 0 0 0 8px rgba(31,157,90,0); }
+      100%{ box-shadow: 0 0 0 0 rgba(31,157,90,0); }
+    }
+
+    /* proof bar above button */
+    .social-proof-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      font-size: .82rem;
+      font-weight: 600;
+      color: var(--c-muted);
+    }
+
+    .proof-avatars {
+      display: flex;
+      gap: -4px;
+      font-size: .9rem;
+      letter-spacing: -4px;
+    }
+
+    /* wide chip spanning full row */
+    .chip.chip-wide {
+      grid-column: 1 / -1;
+      background: linear-gradient(120deg, #fff8e8, #fff3d4);
+      border-color: rgba(224,169,58,.5);
+    }
+
+    .chip.chip-wide .chip-label { color: #3f1120; font-size: .86rem; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 640px) {
+      .form-row       { grid-template-columns: 1fr; }
+      .benefit-chips  { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HERO -->
+  <section class="hero">
+    <span class="om-glyph">ॐ</span>
+    <div class="hero-badge">VedGuide Spiritual Series</div>
+    <h1>Chamunda Mahamantra</h1>
+    <p class="hero-sub">Yeh Mahamantra hai — 30 din mein farak feel hoga. Form fill karke aapka mantra + simple jaap routine unlock karo.</p>
+  </section>
+
+  <div class="page-body">
+
+    <!-- LEAD FORM CARD -->
+    <div class="form-card">
+      <div class="form-head">
+        <div class="step-pill">STEP 1</div>
+        <div class="form-head-text">
+          <h2>Fill this to get results</h2>
+          <p>Apna naam + WhatsApp number share karein</p>
+        </div>
+      </div>
+      <div class="form-body">
+        <div class="form-row">
+          <div class="field">
+            <label for="f-name">Aapka Naam</label>
+            <input type="text" id="f-name" placeholder="e.g. Rahul Sharma" required autocomplete="name">
+          </div>
+          <div class="field">
+            <label for="f-phone">WhatsApp Number</label>
+            <input type="tel" id="f-phone" placeholder="10-digit number" maxlength="10" required autocomplete="tel">
+          </div>
+        </div>
+        <button class="unlock-btn" id="unlockBtn" type="button">🔓 Mahamantra Unlock Karein</button>
+        <p class="form-note">🔒 Sirf result ke liye · Koi spam nahi</p>
+        <p class="msg" id="formMsg"></p>
+      </div>
+    </div>
+
+    <!-- RESULT: 12 NAAM -->
+    <div class="result-section" id="resultSection">
+
+      <!-- greeting -->
+      <div class="greeting-banner">
+        <div class="g-icon">🙏</div>
+        <div>
+          <h3 id="greetName">Jai Maa!</h3>
+          <p>Aapke liye Chamunda Mahamantra + 30-day jaap routine</p>
+        </div>
+      </div>
+
+      <!-- MAHAMANTRA -->
+      <div class="mantra-card" aria-label="Ganpati Mahamantra">
+        <div class="mantra-title">✦ Aapka Mahamantra ✦</div>
+        <div class="mantra-sanskrit">ॐ ऐं ह्रीं क्लीं चामुण्डायै विच्चे</div>
+        <div class="mantra-meaning">Om Aim Hreem Kleem Chamundayai Vichche — ye hai mahamantra jisse 30 din mai farak dikhega.</div>
+
+        <div class="mantra-routine" aria-label="Jaap Routine">
+          <div class="routine-item">
+            <div class="routine-dot">1</div>
+            <div class="routine-text"><b>Subah</b>: Snan ke baad 108 jaap (1 mala) — (ek sankalp: “30 din tak bina break ke karunga”).</div>
+          </div>
+          <div class="routine-item">
+            <div class="routine-dot">2</div>
+            <div class="routine-text"><b>Shaam</b> (optional but powerful): Phir se 108 jaap (phone silent, same jagah).</div>
+          </div>
+          <div class="routine-item">
+            <div class="routine-dot">3</div>
+            <div class="routine-text"><b>30-day focus</b>: Roz same time + same place → 30 din complete karo, andar ka change noticeable hoga.</div>
+          </div>
+          <div class="routine-item">
+            <div class="routine-dot">🔥</div>
+            <div class="routine-text"><b>Important</b>: Mantra dheere aur feel ke saath bole — sirf counting na karein.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FREE KUNDLI CTA BLOCK -->
+      <div class="kundli-cta-block" style="margin-top:22px;">
+
+        <div class="cta-visual-top">
+          <div class="social-proof-ticker" id="proofTicker">
+            <span class="proof-dot"></span>
+            <span id="proofCount">2,847</span> logon ne aaj apni free kundli check ki
+          </div>
+          <h2>Jaano Aapka Asli<br>Planetary Blueprint</h2>
+          <p class="cta-tagline">Sirf date of birth se — Lagna, Rashi, Nakshatra, Dasha — ek hi jagah, bilkul free</p>
+
+          <!-- visual chart mockup -->
+          <div class="chart-mockup">
+            <div class="chart-box">
+              <div class="chart-lines"></div>
+              <div class="chart-dots">
+                <div class="cdot" style="top:22%;left:28%"></div>
+                <div class="cdot" style="top:18%;left:62%"></div>
+                <div class="cdot" style="top:58%;left:20%"></div>
+                <div class="cdot" style="top:70%;left:68%"></div>
+                <div class="cdot" style="top:44%;left:50%;background:#f08c3b;width:8px;height:8px;"></div>
+              </div>
+              <span class="chart-label top-left">Lagna</span>
+              <span class="chart-label top-right">Rashi</span>
+              <span class="chart-label bot-left">Nakshatra</span>
+              <span class="chart-label bot-right">Dasha</span>
+              <span class="chart-label center">ॐ</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- benefit chips -->
+        <div class="benefit-chips">
+          <div class="chip">
+            <div class="chip-icon">🔱</div>
+            <div>
+              <div class="chip-label">Lagna & Rashi Pata Chalegi</div>
+              <div class="chip-sub">Aapki inner strength kaisi hai?</div>
+            </div>
+          </div>
+          <div class="chip">
+            <div class="chip-icon">🌙</div>
+            <div>
+              <div class="chip-label">Kaunsa Nakshatra Hai Aapka?</div>
+              <div class="chip-sub">Mind + emotions ka full pattern</div>
+            </div>
+          </div>
+          <div class="chip">
+            <div class="chip-icon">⚡</div>
+            <div>
+              <div class="chip-label">Abhi Kaun Si Dasha Chal Rahi?</div>
+              <div class="chip-sub">Current planetary period decoded</div>
+            </div>
+          </div>
+          <div class="chip">
+            <div class="chip-icon">🎯</div>
+            <div>
+              <div class="chip-label">Career & Kismat Direction</div>
+              <div class="chip-sub">Kab kya karna best rahega?</div>
+            </div>
+          </div>
+          <div class="chip chip-wide">
+            <div class="chip-icon">💡</div>
+            <div>
+              <div class="chip-label">90% log pehli baar ek aisi baat jaante hain</div>
+              <div class="chip-sub">jo unhe apne baare mein kabhi pata nahi thi</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- cta button -->
+        <div class="cta-bottom">
+          <div class="social-proof-bar">
+            <div class="proof-avatars">
+              <span>👤</span><span>👤</span><span>👤</span>
+            </div>
+            <span id="proofBarText">2,847 logon ne aaj check kiya</span>
+          </div>
+          <a class="big-cta" id="freeKundliBtn" href="kundli-preview.html">
+            Meri Free Kundli Check Karo →
+          </a>
+          <div class="free-tag-row" style="margin-top:12px;margin-bottom:0;">
+            <span class="free-tag">✅ 100% Free</span>
+            <span class="free-tag">✅ 2 Minutes</span>
+            <span class="free-tag">✅ No Login</span>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /result-section -->
+
+  </div><!-- /page-body -->
+
+  <script>
+    (function () {
+      document.addEventListener("DOMContentLoaded", function () {
+        if (window.ShubhmayTrack) {
+          ShubhmayTrack.init({ sourcePage: 'mahamantra', meta: { page: 'mahamantra' } });
+        }
+      });
+
+      var unlockBtn     = document.getElementById("unlockBtn");
+      var msgEl         = document.getElementById("formMsg");
+      var nameEl        = document.getElementById("f-name");
+      var phoneEl       = document.getElementById("f-phone");
+      var resultSection = document.getElementById("resultSection");
+      var greetNameEl   = document.getElementById("greetName");
+      var freeKundliBtn = document.getElementById("freeKundliBtn");
+
+      function track(et, pl) {
+        if (window.dataLayer) window.dataLayer.push(Object.assign({ event: et }, pl));
+        if (window.ShubhmayTrack) ShubhmayTrack.track(et, pl || {}, {});
+      }
+
+      function setMsg(t, cls) {
+        msgEl.textContent = t || "";
+        msgEl.className = "msg" + (cls ? " " + cls : "");
+      }
+
+      unlockBtn.addEventListener("click", function () {
+        setMsg("");
+        var name  = (nameEl.value  || "").trim();
+        var phone = (phoneEl.value || "").replace(/\D/g, "");
+
+        if (!name) { setMsg("Apna naam enter karein.", "err"); nameEl.focus(); return; }
+        if (phone.length !== 10) { setMsg("Valid 10-digit WhatsApp number enter karein.", "err"); phoneEl.focus(); return; }
+
+        unlockBtn.disabled = true;
+        unlockBtn.textContent = "Unlocking…";
+
+        track("ganpati_lead_submit", { name: name, phone: phone, source_page: "ganpatiji" });
+
+        greetNameEl.textContent = "Jai Maa, " + name + " ji!";
+        resultSection.style.display = "block";
+        setTimeout(function () {
+          resultSection.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 80);
+
+        setMsg("", "");
+        unlockBtn.disabled = false;
+        unlockBtn.textContent = "🔓 Mahamantra Unlock Karein";
+      });
+
+      if (freeKundliBtn) {
+        freeKundliBtn.addEventListener("click", function () {
+          track("cta_click", {
+            page: "ganpatiji",
+            cta_location: "result_kundli_block",
+            cta_label: "Meri Free Kundli Check Karo",
+            destination_url: "kundli-preview.html"
+          });
+        });
+      }
+
+      // Live social-proof counter — ticks up every 18–35s for realism
+      (function () {
+        var base = 2847;
+        // randomise starting point ±30 so repeat visitors see variance
+        var count = base + Math.floor(Math.random() * 30);
+        var tickerEl  = document.getElementById("proofCount");
+        var barEl     = document.getElementById("proofBarText");
+
+        function fmt(n) {
+          return n.toLocaleString("en-IN");
+        }
+
+        function update() {
+          count += 1;
+          var s = fmt(count) + " logon ne aaj apni free kundli check ki";
+          if (tickerEl) tickerEl.textContent = fmt(count);
+          if (barEl)    barEl.textContent    = fmt(count) + " logon ne aaj check kiya";
+          // schedule next tick: 18–35 seconds
+          setTimeout(update, 18000 + Math.random() * 17000);
+        }
+
+        setTimeout(update, 18000 + Math.random() * 17000);
+      })();
+    })();
+  </script>
+</body>
+</html>

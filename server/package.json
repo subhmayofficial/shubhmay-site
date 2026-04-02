@@ -1,0 +1,22 @@
+{
+  "name": "shubhmay-api",
+  "version": "1.0.0",
+  "description": "API + optional static site. Local dev with site: cd server && npm run dev:site (SERVE_STATIC=1). Do not use npm run dev start:site — that does not enable static hosting.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "start:site": "SERVE_STATIC=1 node index.js",
+    "dev": "node --watch index.js",
+    "dev:site": "SERVE_STATIC=1 node --watch index.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "luxon": "^3.5.0"
+  }
+}

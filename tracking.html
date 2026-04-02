@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Tracking test — VedGuide</title>
+  <link rel="icon" href="/favicon/favicon.ico" sizes="any" />
+  <style>
+    :root {
+      --bg: #fbf7f0;
+      --text: #2e2010;
+      --muted: #6b5535;
+      --gold: #b8922a;
+      --card: #fff;
+      --border: rgba(184, 146, 42, 0.35);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 24px 16px 48px;
+    }
+    .wrap { max-width: 560px; margin: 0 auto; }
+    h1 { font-size: 1.35rem; margin: 0 0 8px; }
+    .sub { color: var(--muted); font-size: 0.95rem; margin-bottom: 20px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-bottom: 14px;
+    }
+    .card h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 10px; }
+    code {
+      font-size: 0.8rem;
+      word-break: break-all;
+      display: block;
+      padding: 8px 10px;
+      background: rgba(184, 146, 42, 0.08);
+      border-radius: 8px;
+      margin-top: 6px;
+    }
+    label { display: block; font-size: 0.9rem; margin-bottom: 4px; color: var(--muted); }
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 1rem;
+    }
+    button {
+      display: inline-block;
+      padding: 10px 14px;
+      margin: 0 8px 8px 0;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border-radius: 8px;
+      border: 1px solid var(--gold);
+      background: linear-gradient(180deg, #f5edd8, #ebe0c8);
+      color: var(--text);
+    }
+    button.secondary {
+      background: #fff;
+      border-color: var(--border);
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #log {
+      font-size: 0.78rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 220px;
+      overflow: auto;
+      margin: 0;
+    }
+    .hint { font-size: 0.85rem; color: var(--muted); margin-top: 12px; }
+    a { color: var(--gold); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Tracking test</h1>
+    <p class="sub">
+      Use this page to see what is stored for a session. Check <strong>Admin → Visitors / Leads</strong> after each step.
+      For a fresh “new visitor”, open this page in a private window or click “New session”.
+    </p>
+
+    <div class="card">
+      <h2>Session id</h2>
+      <span id="sidLabel">…</span>
+      <div class="hint">
+        <button type="button" class="secondary" id="btnNewSession">New session (this tab)</button>
+        <a href="/">← Home</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>1) Page &amp; clicks (same API as the main site)</h2>
+      <button type="button" id="btnPageHere">Page view — this page</button>
+      <button type="button" id="btnPageHome">Page view — home (/)</button>
+      <button type="button" class="secondary" id="btnTouch">Session touch only (lead ping, no extra event)</button>
+    </div>
+
+    <div class="card">
+      <h2>2) Save contact (creates / updates lead)</h2>
+      <form id="leadForm">
+        <label for="fName">Name</label>
+        <input type="text" id="fName" name="name" placeholder="Test user" autocomplete="name" />
+
+        <label for="fEmail">Email</label>
+        <input type="email" id="fEmail" name="email" placeholder="you@example.com" autocomplete="email" />
+
+        <label for="fPhone">Phone (India 10 digit)</label>
+        <input type="tel" id="fPhone" name="phone" placeholder="9876543210" autocomplete="tel" />
+
+        <button type="submit">Submit contact</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Last API responses</h2>
+      <pre id="log"></pre>
+    </div>
+  </div>
+
+  <script>
+(function () {
+  var logEl = document.getElementById('log');
+  function log(line, obj) {
+    var t = new Date().toISOString().slice(11, 19) + ' ' + line;
+    if (obj !== undefined) {
+      try {
+        t += '\n' + JSON.stringify(obj, null, 2);
+      } catch (e) {
+        t += '\n' + String(obj);
+      }
+    }
+    logEl.textContent = t + (logEl.textContent ? '\n\n' + logEl.textContent : '');
+  }
+
+  function ensureSid() {
+    var sid = sessionStorage.getItem('shubhmay_sid');
+    if (!sid) {
+      sid = 's_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
+      sessionStorage.setItem('shubhmay_sid', sid);
+    }
+    return sid;
+  }
+
+  var sid = ensureSid();
+  document.getElementById('sidLabel').textContent = sid;
+
+  var params = new URLSearchParams(window.location.search);
+  ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (k) {
+    var v = params.get(k);
+    if (v && !sessionStorage.getItem('shubhmay_' + k)) sessionStorage.setItem('shubhmay_' + k, v);
+  });
+
+  function utmObj() {
+    var o = {};
+    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (k) {
+      var v = sessionStorage.getItem('shubhmay_' + k);
+      if (v) o[k] = v;
+    });
+    return o;
+  }
+
+  function postJson(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      keepalive: true,
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        return { ok: r.ok, status: r.status, json: j };
+      });
+    });
+  }
+
+  function baseLeadPayload() {
+    var o = utmObj();
+    return {
+      session_id: sid,
+      source_page: 'tracking_test',
+      landing_path: location.pathname + location.search,
+      referrer: document.referrer || null,
+      document_referrer: document.referrer || null,
+      user_agent: navigator.userAgent,
+      client_language: navigator.language,
+      screen_width: typeof screen !== 'undefined' && screen.width ? screen.width : null,
+      screen_height: typeof screen !== 'undefined' && screen.height ? screen.height : null,
+      utm_source: o.utm_source || null,
+      utm_medium: o.utm_medium || null,
+      utm_campaign: o.utm_campaign || null,
+      utm_content: o.utm_content || null,
+      utm_term: o.utm_term || null,
+    };
+  }
+
+  function sendLeadEvent(path, meta) {
+    return postJson('/api/track/lead-event', {
+      session_id: sid,
+      event_type: 'site',
+      event_name: 'page_view',
+      path: path,
+      referrer: document.referrer || null,
+      meta: meta || { page: 'tracking_test', title: 'tracking' },
+    }).then(function (res) {
+      log('POST /api/track/lead-event', res.json);
+      return res;
+    });
+  }
+
+  function sendLeadTouch() {
+    return postJson('/api/track/lead', baseLeadPayload()).then(function (res) {
+      log('POST /api/track/lead (session ping)', res.json);
+      return res;
+    });
+  }
+
+  // Initial load: same pattern as home — session + first page view
+  sendLeadTouch().then(function () {
+    return sendLeadEvent(location.pathname + location.search, { page: 'tracking_test', title: 'tracking' });
+  });
+
+  document.getElementById('btnPageHere').addEventListener('click', function () {
+    sendLeadEvent(location.pathname + location.search, { page: 'tracking_test', title: 'tracking' });
+  });
+  document.getElementById('btnPageHome').addEventListener('click', function () {
+    sendLeadEvent('/', { page: 'home', title: 'from_tracking' });
+  });
+  document.getElementById('btnTouch').addEventListener('click', function () {
+    sendLeadTouch();
+  });
+
+  document.getElementById('btnNewSession').addEventListener('click', function () {
+    sessionStorage.removeItem('shubhmay_sid');
+    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (k) {
+      sessionStorage.removeItem('shubhmay_' + k);
+    });
+    location.reload();
+  });
+
+  document.getElementById('leadForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = (document.getElementById('fName').value || '').trim();
+    var email = (document.getElementById('fEmail').value || '').trim();
+    var phone = (document.getElementById('fPhone').value || '').replace(/\s+/g, '');
+    var payload = Object.assign({}, baseLeadPayload(), {
+      name: name || null,
+      email: email || null,
+      phone: phone || null,
+      conversion_form: 'tracking_test_form',
+    });
+    postJson('/api/track/lead', payload).then(function (res) {
+      log('POST /api/track/lead (with contact)', res.json);
+    });
+  });
+})();
+  </script>
+</body>
+</html>

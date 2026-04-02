@@ -1,0 +1,29 @@
+# Secrets — never commit
+.env
+.env.local
+.env.*.local
+**/.env
+
+# Dependencies
+server/node_modules/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Optional local tooling
+.cursor/
+.claude/
+
+# Supabase CLI local cache (do not commit)
+**/.temp/
+supabase/.temp/
+server/supabase/.temp/

@@ -1,0 +1,13 @@
+# https://shubhmay.com — non-www canonical
+User-agent: *
+Allow: /
+
+# Admin and archived / test assets
+Disallow: /admin
+Disallow: /admindeoghar
+Disallow: /waste/
+
+# App / backend paths (not public HTML)
+Disallow: /supabase/
+
+Sitemap: https://shubhmay.com/sitemap.xml

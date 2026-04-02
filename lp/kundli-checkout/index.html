@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/favicon/favicon.ico" sizes="any">
+    <link rel="icon" href="/favicon/favicon-32x32.png" type="image/png" sizes="32x32">
+    <link rel="icon" href="/favicon/favicon-16x16.png" type="image/png" sizes="16x16">
+    <link rel="apple-touch-icon" href="/favicon/apple-touch-icon.png" sizes="180x180">
+    <title>Checkout — Personalized Kundli Report | ₹499</title>
+    <meta name="description" content="Complete your order for the personalized Janam Kundli report. Secure payment. PDF in 24–48 hrs.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --deep-maroon: #2d080e;
+            --dark-maroon: #1f0509;
+            --light-maroon: #4d0e19;
+            --cream: #fbf9f3;
+            --cream-light: #ffffff;
+            --matte-gold: #c7a962;
+            --dark-gold: #a68a48;
+            --saffron: #f29f58;
+            --saffron-bright: #ffb873;
+            --text-dark: #2a2522;
+            --text-muted: #6b635e;
+            --text-light: #fefcfb;
+            --border-color: #e5dfd1;
+            --border-dark: #4d0e19;
+            --red-alert: #e55a5a;
+            --green-success: #44a66a;
+            --font-heading: 'Outfit', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --transition: all 0.3s ease;
+            --shadow-sm: 0 4px 6px rgba(42, 37, 34, 0.05);
+            --shadow-md: 0 10px 15px rgba(42, 37, 34, 0.08);
+            --shadow-lg: 0 20px 25px rgba(42, 37, 34, 0.15);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-full: 9999px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--font-body);
+            color: var(--text-dark);
+            background-color: var(--deep-maroon);
+            background-image:
+                radial-gradient(circle at top, rgba(199, 169, 98, 0.35), transparent 55%),
+                radial-gradient(circle at bottom, rgba(242, 159, 88, 0.22), transparent 60%);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+        h1, h2, h3, h4 { font-family: var(--font-heading); font-weight: 600; line-height: 1.2; color: var(--deep-maroon); }
+        img { max-width: 100%; display: block; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+        .checkout-body {
+            min-height: 100vh;
+            background: radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 60%),
+                        linear-gradient(to bottom, #2d080e 0%, #1f0509 40%, #120306 100%);
+        }
+        .checkout-header {
+            background: var(--deep-maroon);
+            border-bottom: 2px solid var(--border-dark);
+            padding: 16px 0;
+        }
+        .checkout-header-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        .back-link {
+            color: var(--cream-light);
+            text-decoration: none;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        .back-link:hover { color: var(--saffron); }
+        .secure-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--green-success);
+            font-size: 0.9rem;
+            font-weight: 600;
+            background: rgba(68, 166, 106, 0.1);
+            padding: 6px 12px;
+            border-radius: var(--radius-full);
+        }
+        .checkout-main { padding: 32px 0 80px; }
+        .checkout-container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+        .checkout-grid {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 32px;
+            align-items: flex-start;
+        }
+        @media (max-width: 800px) {
+            .checkout-grid { grid-template-columns: 1fr; }
+        }
+        .checkout-card {
+            background: linear-gradient(145deg, #fffdf8, #f6eee2);
+            border: 1px solid rgba(199, 169, 98, 0.35);
+            border-radius: var(--radius-lg);
+            padding: 40px 32px;
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+        }
+        .checkout-title { font-size: 1.8rem; margin-bottom: 8px; line-height: 1.2; }
+        .checkout-subtitle { font-size: 1rem; color: var(--text-muted); margin-bottom: 32px; }
+        .payment-form .form-group { margin-bottom: 24px; }
+        .payment-form label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            color: var(--deep-maroon);
+        }
+        .badge-tag {
+            font-size: 0.75rem;
+            background: rgba(242, 159, 88, 0.15);
+            color: var(--saffron);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        .payment-form input[type="text"],
+        .payment-form input[type="email"],
+        .payment-form input[type="tel"] {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #d1ccc5;
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+            font-family: var(--font-body);
+            transition: var(--transition);
+            background: #faf8f5;
+        }
+        .payment-form input:focus {
+            outline: none;
+            border-color: var(--matte-gold);
+            box-shadow: 0 0 0 3px rgba(199, 169, 98, 0.2);
+            background: white;
+        }
+        .payment-form input::placeholder {
+            color: #8a8379;
+            opacity: 1;
+        }
+        /* Bigger, clearer DOB/TOB inputs on mobile & desktop */
+        .payment-form input[type="date"],
+        .payment-form input[type="time"] {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #d1ccc5;
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+            font-family: var(--font-body);
+            background: #faf8f5;
+            transition: var(--transition);
+        }
+        .payment-form input[type="date"]:focus,
+        .payment-form input[type="time"]:focus {
+            outline: none;
+            border-color: var(--matte-gold);
+            box-shadow: 0 0 0 3px rgba(199, 169, 98, 0.2);
+            background: white;
+        }
+        .form-row { display: flex; gap: 16px; }
+        .form-row .form-group { flex: 1; }
+        @media (max-width: 600px) {
+            .form-row { flex-direction: column; gap: 0; }
+        }
+        .checkout-divider {
+            border: none;
+            height: 1px;
+            background: var(--border-color);
+            margin: 32px 0;
+        }
+        .subsection-title { font-size: 1.2rem; margin-bottom: 20px; }
+        .payment-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+        .payment-option {
+            position: relative;
+            border: 1px solid #d1ccc5;
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            background: #faf8f5;
+            transition: var(--transition);
+        }
+        .payment-option.selected {
+            border-color: var(--matte-gold);
+            background: rgba(199, 169, 98, 0.05);
+            box-shadow: inset 0 0 0 1px var(--matte-gold);
+        }
+        .payment-option input[type="radio"] { position: absolute; opacity: 0; }
+        .payment-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            margin: 0;
+            width: 100%;
+        }
+        .pm-name { font-weight: 600; color: var(--deep-maroon); font-size: 1rem; }
+        .pm-desc { font-size: 0.85rem; color: var(--text-muted); font-weight: 400; }
+        .checkout-cta {
+            width: 100%;
+            border-radius: var(--radius-full);
+            padding: 18px 24px;
+            font-size: 1.25rem;
+            display: block;
+            text-align: center;
+            font-family: var(--font-heading);
+            font-weight: 700;
+            border: 0;
+            cursor: pointer;
+            transition: var(--transition);
+            background-image:
+                linear-gradient(135deg, #ffcf8b, #f29f58);
+            color: var(--deep-maroon);
+            box-shadow: 0 12px 28px rgba(242, 159, 88, 0.55);
+        }
+        .checkout-cta:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 16px 34px rgba(242, 159, 88, 0.7);
+        }
+        .checkout-cta:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+        .terms-text { text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-top: 16px; }
+        .terms-text a { color: var(--matte-gold); text-decoration: none; }
+        .terms-text a:hover { text-decoration: underline; }
+
+        .summary-card {
+            background: linear-gradient(135deg, var(--deep-maroon), var(--light-maroon));
+            border: 1px solid rgba(199, 169, 98, 0.3);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            color: white;
+            position: sticky;
+            top: 24px;
+            box-shadow: var(--shadow-lg), 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+        .summary-title {
+            color: var(--matte-gold);
+            font-size: 1.4rem;
+            margin-bottom: 24px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+        .product-item {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 24px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 16px;
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .product-img-box {
+            width: 70px;
+            height: 70px;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            background: #fff;
+            flex-shrink: 0;
+        }
+        .product-img-box img { width: 100%; height: 100%; object-fit: cover; }
+        .product-name { color: white; font-size: 1.05rem; margin-bottom: 6px; line-height: 1.3; }
+        .product-features { list-style: none; padding: 0; margin: 0; }
+        .product-features li {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+        .icon-green-small { width: 12px; height: 12px; color: var(--green-success); flex-shrink: 0; }
+        .price-breakdown { margin-bottom: 24px; }
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 12px;
+        }
+        .discount-row { color: var(--saffron-bright); font-weight: 500; }
+        .summary-divider {
+            border: none;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 16px 0;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 0;
+        }
+        .total-amount { font-size: 1.8rem; font-family: var(--font-heading); color: var(--matte-gold); }
+        .trust-guarantee {
+            display: flex;
+            gap: 16px;
+            background: rgba(199, 169, 98, 0.1);
+            padding: 20px;
+            border-radius: var(--radius-sm);
+            border: 1px dashed rgba(199, 169, 98, 0.4);
+            margin-bottom: 24px;
+        }
+        .guarantee-text p { font-size: 0.8rem; color: rgba(255, 255, 255, 0.7); margin-top: 4px; line-height: 1.4; }
+        .secure-logos { text-align: center; }
+        .logo-text {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            display: block;
+        }
+        .logo-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+        .payment-badge {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+        }
+        .form-error { font-size: 0.85rem; color: var(--red-alert); margin-top: 6px; }
+
+        /* Clean, normal-looking select (report language) */
+        .payment-form select {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid #d1ccc5;
+            font-size: 1rem;
+            font-family: var(--font-body);
+            background: #faf8f5;
+        }
+        .payment-form select:focus {
+            outline: none;
+            border-color: var(--matte-gold);
+            box-shadow: 0 0 0 3px rgba(199, 169, 98, 0.2);
+            background: #ffffff;
+        }
+
+        /* Sticky top price lock bar */
+        .sticky-price-bar {
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            background: linear-gradient(90deg, var(--deep-maroon), var(--light-maroon));
+            color: var(--text-light);
+            border-bottom: 1px solid rgba(199, 169, 98, 0.4);
+        }
+        .sticky-price-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 8px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 0.9rem;
+        }
+        .sticky-price-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sticky-price-left strong {
+            color: var(--matte-gold);
+        }
+        .sticky-price-right {
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
+        @media (max-width: 600px) {
+            .sticky-price-inner {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .sticky-price-right {
+                text-align: left;
+            }
+        }
+
+        /* Birth detail section styling */
+        .birth-details-card {
+            margin-top: 20px;
+            margin-bottom: 16px;
+            padding: 0;
+        }
+        .birth-details-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .birth-details-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--deep-maroon);
+        }
+        .birth-details-note {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-align: right;
+            flex: 1;
+        }
+        @media (max-width: 600px) {
+            .birth-details-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .birth-details-note {
+                text-align: left;
+            }
+        }
+        /* Google Places dropdown styling */
+        .pac-container {
+            z-index: 9999;
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+        }
+    </style>
+    <!-- Google Tag Manager -->
+    <script>
+        (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+        new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-MGBML6GZ');
+    </script>
+    <!-- End Google Tag Manager -->
+    <!-- Google Maps Places: loaded at end of body with callback (see below) -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+
+<body class="checkout-body">
+    <!-- Google Tag Manager (noscript) -->
+    <noscript>
+        <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MGBML6GZ"
+                height="0" width="0" style="display:none;visibility:hidden"></iframe>
+    </noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    <div class="sticky-price-bar">
+        <div class="sticky-price-inner">
+            <div class="sticky-price-left">
+                <span>🔒</span>
+                <span>Price locked at <strong>₹<span id="sticky-price">499</span></strong> for the next <span id="timer-text">10:00</span>.</span>
+            </div>
+            <div class="sticky-price-right">Secure checkout via Razorpay • UPI / Cards • 256‑bit SSL</div>
+        </div>
+    </div>
+    <header class="checkout-header">
+        <div class="checkout-header-inner">
+            <a href="/lp/kundli.html" class="back-link" aria-label="Back to Kundli">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m15 18-6-6 6-6"/></svg>
+            </a>
+        </div>
+    </header>
+
+    <main class="checkout-main">
+        <div class="checkout-container">
+            <div class="checkout-grid">
+                <div class="checkout-card">
+                    <h1 class="checkout-title">Complete your order</h1>
+                    <p class="checkout-subtitle">Enter your contact + birth details so we can prepare your personalized report.</p>
+
+                    <form id="checkout-form" class="payment-form" action="#" method="post" novalidate>
+                        <div class="form-group">
+                            <label for="name">Full name <span style="color:#d9534f;">*</span></label>
+                            <input type="text" id="name" name="name" placeholder="e.g. Priya Sharma" required autocomplete="name">
+                            <p id="name-error" class="form-error" role="alert" aria-live="polite" hidden></p>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="email">Email <span style="color:#d9534f;">*</span></label>
+                                <input type="email" id="email" name="email" placeholder="priya@example.com" required autocomplete="email">
+                                <p id="email-error" class="form-error" role="alert" aria-live="polite" hidden></p>
+                            </div>
+                            <div class="form-group">
+                                <label for="phone">Phone (WhatsApp) <span style="color:#d9534f;">*</span></label>
+                                <input type="tel" id="phone" name="phone" placeholder="10-digit mobile" required autocomplete="tel" minlength="10" maxlength="15">
+                                <p id="phone-error" class="form-error" role="alert" aria-live="polite" hidden></p>
+                            </div>
+                        </div>
+
+                        <div class="birth-details-card">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="dob">Date of birth <span style="color:#d9534f;">*</span></label>
+                                    <input type="date" id="dob" name="dob" required>
+                                    <p id="dob-error" class="form-error" role="alert" aria-live="polite" hidden></p>
+                                </div>
+                                <div class="form-group">
+                                    <label for="tob">Time of birth <span style="color:#d9534f;">*</span></label>
+                                    <input type="time" id="tob" name="tob" required>
+                                    <p id="tob-error" class="form-error" role="alert" aria-live="polite" hidden></p>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="birth_place">Birth place <span style="color:#d9534f;">*</span></label>
+                                <input type="text" id="birth_place" name="birth_place" placeholder="e.g. Mumbai, Maharashtra, India" required autocomplete="off" spellcheck="false">
+                                <p id="birth_place-error" class="form-error" role="alert" aria-live="polite" hidden></p>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="language">Report language <span style="color:#d9534f;">*</span></label>
+                            <select id="language" name="language" required>
+                                <option value="hindi" selected>Hindi</option>
+                                <option value="english">English</option>
+                            </select>
+                        </div>
+
+                        <hr class="checkout-divider" aria-hidden="true">
+
+                        <div class="form-group" style="margin-bottom: 16px;">
+                            <label for="coupon" style="font-size:0.85rem; font-weight:500; color:var(--text-muted);">
+                                Any coupon? <span style="font-weight:400; opacity:0.8;">(optional)</span>
+                            </label>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <input
+                                    type="text"
+                                    id="coupon"
+                                    name="coupon"
+                                    placeholder="Enter code"
+                                    style="padding:10px 12px; font-size:0.9rem; flex:1;"
+                                >
+                                <button type="button" id="coupon-apply-btn" style="padding:8px 12px; font-size:0.8rem; border-radius:999px; border:1px solid #d1ccc5; background:#faf8f5; cursor:pointer;">
+                                    Apply
+                                </button>
+                            </div>
+                            <div id="coupon-status" style="margin-top:4px; font-size:0.8rem; color:var(--text-muted);"></div>
+                        </div>
+
+                        <button type="submit" id="pay-btn" class="checkout-cta">Pay Now</button>
+                        <div style="margin-top:10px; text-align:center; font-size:0.8rem; color:var(--text-muted);">
+                            <span>🔒 Secure checkout powered by Razorpay • UPI / Cards • Netbanking • 256‑bit SSL</span>
+                        </div>
+                    </form>
+                    <div id="rz-success" style="display:none;margin-top:24px;padding:24px;border-radius:12px;background:rgba(68,166,106,0.12);border:1px solid rgba(68,166,106,0.35);">
+                        <h2 style="font-size:1.25rem;margin-bottom:10px;color:var(--deep-maroon);">Thank you — payment received</h2>
+                        <p style="color:var(--text-muted);font-size:0.95rem;">We will use your birth details to prepare the personalized report. Check your email for updates.</p>
+                        <p id="rz-pay-id" style="margin-top:14px;font-size:0.82rem;word-break:break-all;color:var(--text-dark);"></p>
+                    </div>
+                    <p class="terms-text">By paying, you agree to our <a href="/terms-of-service.html">Terms</a> and <a href="/refund-policy.html">Refund Policy</a>. PDF delivery in 24–48 hours.</p>
+                </div>
+
+                <aside class="summary-card" aria-label="Order summary">
+                    <h2 class="summary-title">Order summary</h2>
+                    <div class="product-item">
+                        <div class="product-img-box">
+                            <img src="https://primedit-cdn.b-cdn.net/shubhmay-lp-kundli/astroguruashutoshsize.jpg" alt="" width="70" height="70">
+                        </div>
+                        <div>
+                            <p class="product-name">Personalized Janam Kundli Report</p>
+                            <ul class="product-features">
+                                <li><span class="icon-green-small">✓</span> 15–20 page PDF</li>
+                                <li><span class="icon-green-small">✓</span> Career, marriage, dasha</li>
+                                <li><span class="icon-green-small">✓</span> Manual analysis by astrologer</li>
+                                <li><span class="icon-green-small">✓</span> Delivery in 24–48 hrs</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="price-breakdown">
+                        <div class="price-row">
+                            <span>Report (value)</span>
+                            <span style="text-decoration: line-through;">₹1,995</span>
+                        </div>
+                        <div class="price-row discount-row">
+                            <span>Today’s locked offer</span>
+                            <span>₹<span id="offer-price">499</span></span>
+                        </div>
+                    </div>
+                    <hr class="summary-divider" aria-hidden="true">
+                    <div class="total-row">
+                        <span>You pay (locked)</span>
+                        <span class="total-amount">₹<span id="total-price">499</span></span>
+                    </div>
+                    <div class="trust-guarantee">
+                        <div class="guarantee-text">
+                            <p>🔒 Secure payment. Birth details used only for your report.</p>
+                        </div>
+                    </div>
+                    <div class="secure-logos">
+                        <span class="logo-text">Secure payment</span>
+                        <div class="logo-row">
+                            <span class="payment-badge">UPI</span>
+                            <span class="payment-badge">Cards</span>
+                            <span class="payment-badge">SSL</span>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        (function () {
+            var form = document.getElementById('checkout-form');
+            var payBtn = document.getElementById('pay-btn');
+            var nameEl = document.getElementById('name');
+            var emailEl = document.getElementById('email');
+            var phoneEl = document.getElementById('phone');
+            var dobEl = document.getElementById('dob');
+            var tobEl = document.getElementById('tob');
+            var birthPlaceEl = document.getElementById('birth_place');
+            var languageEl = document.getElementById('language');
+            var couponEl = document.getElementById('coupon');
+            var couponApplyBtn = document.getElementById('coupon-apply-btn');
+            var couponStatusEl = document.getElementById('coupon-status');
+            var nameError = document.getElementById('name-error');
+            var emailError = document.getElementById('email-error');
+            var phoneError = document.getElementById('phone-error');
+            var dobError = document.getElementById('dob-error');
+            var tobError = document.getElementById('tob-error');
+            var birthPlaceError = document.getElementById('birth_place-error');
+
+            var BASE_PRICE = 499;
+            var currentPrice = BASE_PRICE;
+            var stickyPriceEl = document.getElementById('sticky-price');
+            var offerPriceEl = document.getElementById('offer-price');
+            var totalPriceEl = document.getElementById('total-price');
+            var rzSuccess = document.getElementById('rz-success');
+            var rzPayId = document.getElementById('rz-pay-id');
+            var birthPlaceChosen = false;
+
+            var sessionId = (function () {
+                var k = 'sm_site_session';
+                var s = sessionStorage.getItem(k);
+                if (!s) {
+                    s = 'sess_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 12);
+                    sessionStorage.setItem(k, s);
+                }
+                return s;
+            })();
+            var checkoutSessionId = (function () {
+                var k = 'sm_checkout_session';
+                var s = sessionStorage.getItem(k);
+                if (!s) {
+                    s = 'chk_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 12);
+                    sessionStorage.setItem(k, s);
+                }
+                return s;
+            })();
+            window.__smLeadId = null;
+
+            function parseQs() {
+                var q = {};
+                if (!window.location.search) return q;
+                window.location.search
+                    .slice(1)
+                    .split('&')
+                    .forEach(function (p) {
+                        var i = p.indexOf('=');
+                        if (i === -1) return;
+                        q[decodeURIComponent(p.slice(0, i))] = decodeURIComponent(p.slice(i + 1) || '');
+                    });
+                return q;
+            }
+
+            function utmPayload() {
+                var qs = parseQs();
+                return {
+                    utm_source: qs.utm_source || '',
+                    utm_medium: qs.utm_medium || '',
+                    utm_campaign: qs.utm_campaign || '',
+                    utm_content: qs.utm_content || '',
+                    utm_term: qs.utm_term || ''
+                };
+            }
+
+            function trackCheckoutEvent(stage, extra) {
+                extra = extra || {};
+                var u = utmPayload();
+                var body = {
+                    checkout_session_id: checkoutSessionId,
+                    visitor_session_id: sessionId,
+                    lead_id: window.__smLeadId || null,
+                    stage: stage,
+                    landing_path: window.location.pathname + window.location.search,
+                    referrer: document.referrer || '',
+                    utm_source: u.utm_source,
+                    utm_medium: u.utm_medium,
+                    utm_campaign: u.utm_campaign,
+                    utm_content: u.utm_content,
+                    utm_term: u.utm_term
+                };
+                for (var k in extra) {
+                    if (Object.prototype.hasOwnProperty.call(extra, k)) body[k] = extra[k];
+                }
+                return fetch('/api/track/checkout-event', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                }).catch(function () {});
+            }
+
+            function initTracking() {
+                var path = window.location.pathname + window.location.search;
+                var u = utmPayload();
+                fetch('/api/track/lead', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        landing_path: path,
+                        referrer: document.referrer || '',
+                        document_referrer: document.referrer || '',
+                        source_page: 'kundli-checkout',
+                        user_agent: navigator.userAgent || '',
+                        client_language: navigator.language || '',
+                        screen_width: window.screen && window.screen.width,
+                        screen_height: window.screen && window.screen.height,
+                        utm_source: u.utm_source,
+                        utm_medium: u.utm_medium,
+                        utm_campaign: u.utm_campaign,
+                        utm_content: u.utm_content,
+                        utm_term: u.utm_term
+                    })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (j) {
+                        if (j && j.leadId) {
+                            window.__smLeadId = j.leadId;
+                        }
+                        if (j && j.visitorId) {
+                            window.__smVisitorId = j.visitorId;
+                        }
+                        return trackCheckoutEvent('page_view');
+                    })
+                    .catch(function () {});
+            }
+            initTracking();
+
+            function syncLeadForm() {
+                var u = utmPayload();
+                var path = window.location.pathname + window.location.search;
+                return fetch('/api/track/lead', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        email: emailEl.value.trim(),
+                        name: nameEl.value.trim(),
+                        phone: phoneEl.value.replace(/\s/g, ''),
+                        conversion_form: 'kundli_checkout_form',
+                        landing_path: path,
+                        referrer: document.referrer || '',
+                        document_referrer: document.referrer || '',
+                        source_page: 'kundli-checkout',
+                        user_agent: navigator.userAgent || '',
+                        client_language: navigator.language || '',
+                        screen_width: window.screen && window.screen.width,
+                        screen_height: window.screen && window.screen.height,
+                        utm_source: u.utm_source,
+                        utm_medium: u.utm_medium,
+                        utm_campaign: u.utm_campaign,
+                        utm_content: u.utm_content,
+                        utm_term: u.utm_term
+                    })
+                })
+                    .then(function (r) {
+                        return r.json();
+                    })
+                    .then(function (j) {
+                        if (j && j.leadId) window.__smLeadId = j.leadId;
+                    });
+            }
+
+            function updatePriceDisplay(amount) {
+                currentPrice = amount;
+                var displayValue = String(Math.round(amount));
+                if (stickyPriceEl) stickyPriceEl.textContent = displayValue;
+                if (offerPriceEl) offerPriceEl.textContent = displayValue;
+                if (totalPriceEl) totalPriceEl.textContent = displayValue;
+            }
+
+            var BIRTH_PLACE_PLACEHOLDER = 'e.g. Mumbai, Maharashtra, India';
+
+            function initBirthPlaceAutocomplete() {
+                var input = document.getElementById('birth_place');
+                if (!input || !window.google || !google.maps || !google.maps.places) return;
+                input.setAttribute('placeholder', BIRTH_PLACE_PLACEHOLDER);
+                birthPlaceChosen = false;
+
+                ['input', 'change'].forEach(function (ev) {
+                    input.addEventListener(ev, function () {
+                        birthPlaceChosen = false;
+                    });
+                });
+
+                try {
+                    var ac = new google.maps.places.Autocomplete(input, { types: ['(cities)'] });
+                    ac.addListener('place_changed', function () {
+                        var place = ac.getPlace();
+                        if (place && place.formatted_address) {
+                            input.value = place.formatted_address;
+                        }
+                        birthPlaceChosen = true;
+                    });
+                } catch (e) {
+                    /* plain text field still works */
+                }
+            }
+
+            // Same pattern as v2/test-maps.html: global callback name + ?key=...&libraries=places&callback=...
+            window.initBirthPlaceMaps = function () {
+                try {
+                    initBirthPlaceAutocomplete();
+                } catch (e) {}
+            };
+
+            function injectGoogleMapsScript(apiKey) {
+                if (!apiKey || document.querySelector('script[data-sm-google-maps]')) return;
+                var s = document.createElement('script');
+                s.setAttribute('data-sm-google-maps', '1');
+                s.async = true;
+                s.defer = true;
+                s.src =
+                    'https://maps.googleapis.com/maps/api/js?key=' +
+                    apiKey +
+                    '&libraries=places&callback=initBirthPlaceMaps';
+                document.body.appendChild(s);
+            }
+
+            fetch('/api/checkout/kundli/config')
+                .then(function (r) { return r.json(); })
+                .then(function (cfg) {
+                    if (cfg.amountRupees != null) {
+                        BASE_PRICE = Number(cfg.amountRupees);
+                        updatePriceDisplay(BASE_PRICE);
+                    }
+                    if (!cfg.razorpayReady && couponStatusEl) {
+                        couponStatusEl.textContent = 'Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to server .env to enable payment.';
+                    }
+                    if (cfg.googleMapsBrowserKey) {
+                        injectGoogleMapsScript(cfg.googleMapsBrowserKey);
+                    }
+                })
+                .catch(function () {});
+
+            function showError(el, msg) {
+                el.textContent = msg || '';
+                el.hidden = !msg;
+            }
+
+            function validate() {
+                var ok = true;
+                if (!nameEl.value.trim()) {
+                    showError(nameError, 'Please enter your name');
+                    ok = false;
+                } else showError(nameError, '');
+                if (!emailEl.value.trim()) {
+                    showError(emailError, 'Please enter your email');
+                    ok = false;
+                } else showError(emailError, '');
+                var phone = (phoneEl.value || '').replace(/\D/g, '');
+                if (phone.length < 10) {
+                    showError(phoneError, 'Enter a valid phone number');
+                    ok = false;
+                } else showError(phoneError, '');
+                if (!dobEl.value) {
+                    showError(dobError, 'Please select your date of birth');
+                    ok = false;
+                } else showError(dobError, '');
+                if (!tobEl.value) {
+                    showError(tobError, 'Please select your time of birth');
+                    ok = false;
+                } else showError(tobError, '');
+                var bp = birthPlaceEl.value.trim();
+                if (!bp) {
+                    showError(birthPlaceError, 'Please enter your birth place');
+                    ok = false;
+                } else if (!birthPlaceChosen && window.google && google.maps && google.maps.places) {
+                    showError(birthPlaceError, 'Please choose a suggestion from the dropdown');
+                    ok = false;
+                } else {
+                    showError(birthPlaceError, '');
+                }
+                return ok;
+            }
+
+            if (couponApplyBtn) {
+                couponApplyBtn.addEventListener('click', function () {
+                    if (!couponStatusEl) return;
+                    var raw = (couponEl && couponEl.value || '').trim();
+                    if (!raw) {
+                        couponStatusEl.textContent = '';
+                        updatePriceDisplay(BASE_PRICE);
+                        return;
+                    }
+                    couponStatusEl.textContent =
+                        'Coupon discounts will use server pricing soon. Paying full amount for now (₹' +
+                        Math.round(BASE_PRICE) +
+                        ').';
+                });
+            }
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                if (!validate()) return;
+                if (typeof Razorpay === 'undefined') {
+                    alert('Razorpay could not load. Check your connection and try again.');
+                    return;
+                }
+                payBtn.disabled = true;
+                payBtn.textContent = 'Starting payment…';
+
+                syncLeadForm()
+                    .then(function () {
+                        var payload = {
+                            name: nameEl.value.trim(),
+                            email: emailEl.value.trim(),
+                            phone: phoneEl.value.replace(/\s/g, ''),
+                            dob: dobEl.value,
+                            tob: tobEl.value,
+                            birth_place: birthPlaceEl.value.trim(),
+                            language: languageEl.value,
+                            coupon: couponEl && couponEl.value ? couponEl.value.trim() : '',
+                            lead_id: window.__smLeadId || '',
+                            checkout_session_id: checkoutSessionId
+                        };
+                        return trackCheckoutEvent('form_submit', {
+                            email: payload.email,
+                            name: payload.name,
+                            phone: payload.phone
+                        }).then(function () {
+                            return fetch('/api/checkout/kundli/order', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+                        });
+                    })
+                    .then(function (r) {
+                        return r.json().then(function (j) {
+                            return { ok: r.ok, j: j };
+                        });
+                    })
+                    .then(function (res) {
+                        if (!res.ok || !res.j.ok) {
+                            throw new Error(res.j.error || 'Could not create order');
+                        }
+                        var j = res.j;
+                        trackCheckoutEvent('payment_opened', {
+                            razorpay_order_id: j.orderId,
+                            amount_paise: j.amount,
+                            currency: j.currency || 'INR'
+                        });
+                        var options = {
+                            key: j.keyId,
+                            order_id: j.orderId,
+                            name: 'VedGuide',
+                            description: 'Personalized Premium Kundli Report',
+                            prefill: j.prefill || {},
+                            handler: function (response) {
+                                payBtn.textContent = 'Verifying…';
+                                fetch('/api/checkout/kundli/verify', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        razorpay_order_id: response.razorpay_order_id,
+                                        razorpay_payment_id: response.razorpay_payment_id,
+                                        razorpay_signature: response.razorpay_signature
+                                    })
+                                })
+                                    .then(function (r) {
+                                        return r.json().then(function (x) {
+                                            return { ok: r.ok, x: x };
+                                        });
+                                    })
+                                    .then(function (vr) {
+                                        if (!vr.ok || !vr.x.ok) {
+                                            throw new Error((vr.x && vr.x.error) || 'Verification failed');
+                                        }
+                                        trackCheckoutEvent('converted', {
+                                            razorpay_order_id: response.razorpay_order_id
+                                        });
+                                        form.style.display = 'none';
+                                        if (rzSuccess) {
+                                            rzSuccess.style.display = 'block';
+                                            if (rzPayId) {
+                                                rzPayId.textContent =
+                                                    'Payment ID: ' + (response.razorpay_payment_id || '');
+                                            }
+                                        }
+                                        payBtn.style.display = 'none';
+                                    })
+                                    .catch(function (err) {
+                                        alert(err.message || 'Verification failed');
+                                        payBtn.disabled = false;
+                                        payBtn.textContent = 'Pay Now';
+                                    });
+                            },
+                            modal: {
+                                ondismiss: function () {
+                                    trackCheckoutEvent('dismissed');
+                                    payBtn.disabled = false;
+                                    payBtn.textContent = 'Pay Now';
+                                }
+                            },
+                            theme: { color: '#c7a962' }
+                        };
+                        var rz = new Razorpay(options);
+                        rz.open();
+                        payBtn.disabled = false;
+                        payBtn.textContent = 'Pay Now';
+                    })
+                    .catch(function (err) {
+                        alert(err.message || 'Payment could not start');
+                        payBtn.disabled = false;
+                        payBtn.textContent = 'Pay Now';
+                    });
+            });
+
+            var timerEl = document.getElementById('timer-text');
+            if (timerEl) {
+                var remaining = 10 * 60;
+                setInterval(function () {
+                    if (remaining <= 0) {
+                        timerEl.textContent = '00:00';
+                        return;
+                    }
+                    remaining--;
+                    var m = String(Math.floor(remaining / 60)).padStart(2, '0');
+                    var s = String(remaining % 60).padStart(2, '0');
+                    timerEl.textContent = m + ':' + s;
+                }, 1000);
+            }
+        })();
+    </script>
+</body>
+
+</html>
