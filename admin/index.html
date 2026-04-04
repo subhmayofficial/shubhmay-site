@@ -143,11 +143,11 @@
         </a>
 
         <span class="nav-section-label">People</span>
+        <a class="nav-item" href="#/profiles" data-panel="profiles">
+          <span class="nav-icon">◎</span>Profiles
+        </a>
         <a class="nav-item" href="#/leads" data-panel="leads">
           <span class="nav-icon">✉</span>Leads
-        </a>
-        <a class="nav-item" href="#/visitors" data-panel="visitors">
-          <span class="nav-icon">◉</span>Site Visitors
         </a>
         <a class="nav-item" href="#/abandoned" data-panel="abandoned">
           <span class="nav-icon">⚠</span>Left Without Paying
@@ -277,6 +277,7 @@
         <section class="panel hidden" id="panel-orders" data-panel>
           <p class="panel-intro">All payments received. Filter by date, status, or search by name/phone. Click any row to open full details.</p>
           <div class="primary-metrics-row" id="ordersPrimaryStrip" aria-live="polite"></div>
+          <p class="detail-muted" id="ordersAppliedFilters" style="margin:6px 0 10px;">Filters: default</p>
 
           <div class="filter-toolbar" id="ordersFilters">
             <div class="filter-tool-card filter-tool-card--wide">
@@ -335,7 +336,7 @@
                   <th title="'From contact' = email/phone was submitted before payment. 'Direct' = guest checkout.">Source</th>
                   <th>Receipt / Razorpay ID</th>
                   <th>Status</th>
-                  <th>Open</th>
+                  <th>Expand</th>
                 </tr>
               </thead>
               <tbody id="ordersTbody"></tbody>
@@ -352,6 +353,7 @@
         <section class="panel hidden" id="panel-customers" data-panel>
           <p class="panel-intro">People who have paid. Click any row to see their full profile and complete site activity.</p>
           <div class="primary-metrics-row" id="customersPrimaryStrip" aria-live="polite"></div>
+          <p class="detail-muted" id="customersAppliedFilters" style="margin:6px 0 10px;">Filters: default</p>
 
           <div class="filter-card">
             <div class="filter-card-head">
@@ -390,7 +392,7 @@
                   <th>Paying?</th>
                   <th>First paid</th>
                   <th>Total spent</th>
-                  <th>Open</th>
+                  <th>Expand</th>
                 </tr>
               </thead>
               <tbody id="customersTbody"></tbody>
@@ -404,9 +406,66 @@
         </section>
 
         <!-- ── LEADS ───────────────────────────────── -->
+        <section class="panel hidden" id="panel-profiles" data-panel>
+          <p class="panel-intro">One row per merged person. Summary columns stay compact; use Expand for full journey, linked records, and merge history.</p>
+          <div class="primary-metrics-row" id="profilesPrimaryStrip" aria-live="polite"></div>
+          <p class="detail-muted" id="profilesAppliedFilters" style="margin:6px 0 10px;">Filters: default</p>
+
+          <div class="filter-card">
+            <div class="filter-card-head">
+              <span class="filter-card-title">Last seen</span>
+              <div class="filter-chips" role="group" aria-label="Profile date shortcuts">
+                <button type="button" class="filter-chip" data-date-panel="profiles" data-date-preset="today">Today</button>
+                <button type="button" class="filter-chip" data-date-panel="profiles" data-date-preset="yesterday">Yesterday</button>
+                <button type="button" class="filter-chip" data-date-panel="profiles" data-date-preset="last7">Last 7d</button>
+                <button type="button" class="filter-chip" data-date-panel="profiles" data-date-preset="last30">Last 30d</button>
+              </div>
+            </div>
+            <div class="admin-filters admin-filters--wrap" id="profilesFilters">
+              <input type="search" class="orders-input" id="profilesFilterSearch" placeholder="Search phone, email, name, profile id or linked session id" />
+              <select class="orders-input" id="profilesFilterLifecycle" aria-label="Lifecycle stage">
+                <option value="">Any stage</option>
+                <option value="visitor">Visitor</option>
+                <option value="lead">Lead</option>
+                <option value="checkout_contact">Checkout contact</option>
+                <option value="customer">Customer</option>
+              </select>
+              <span class="detail-muted" style="align-self:center;font-size:12px;">Expand = full detail + timeline</span>
+              <input type="datetime-local" class="orders-input" id="profilesFilterDateFrom" title="Last seen from" />
+              <input type="datetime-local" class="orders-input" id="profilesFilterDateTo" title="Last seen to" />
+              <button type="button" class="btn btn--small" id="profilesFilterApply">Apply</button>
+              <button type="button" class="btn btn--small btn--ghost" id="profilesFilterReset">Reset</button>
+            </div>
+          </div>
+
+          <p class="orders-msg" id="profilesMsg" hidden></p>
+          <div class="table-wrap table-wrap--wide" id="profilesTableWrap" hidden>
+            <table class="data-table data-table--dense" id="profilesTable">
+              <thead>
+                <tr id="profilesTableHeadRow">
+                  <th>Last seen</th>
+                  <th>Contact</th>
+                  <th>Stage</th>
+                  <th>Orders / revenue</th>
+                  <th>Linked</th>
+                  <th>Expand</th>
+                </tr>
+              </thead>
+              <tbody id="profilesTbody"></tbody>
+            </table>
+          </div>
+          <div class="pagination hidden" id="profilesPagination">
+            <button type="button" class="btn btn--small btn--ghost" id="profilesPagePrev">← Prev</button>
+            <span class="pagination-info" id="profilesPageInfo"></span>
+            <button type="button" class="btn btn--small btn--ghost" id="profilesPageNext">Next →</button>
+          </div>
+        </section>
+
+        <!-- ── LEADS ───────────────────────────────── -->
         <section class="panel hidden" id="panel-leads" data-panel>
-          <p class="panel-intro">People who shared contact details (email or phone). This view only shows real leads.</p>
+          <p class="panel-intro">People who shared contact details. Default is one row per person (sessions merged); switch to raw to see every submission.</p>
           <div class="primary-metrics-row" id="leadsPrimaryStrip" aria-live="polite"></div>
+          <p class="detail-muted" id="leadsAppliedFilters" style="margin:6px 0 10px;">Filters: default</p>
 
           <div class="filter-card">
             <div class="filter-card-head">
@@ -428,6 +487,10 @@
               <select class="orders-input" id="leadsFilterContactsOnly" aria-label="Lead filter">
                 <option value="1" selected>Has email or phone</option>
                 <option value="0">All records (legacy)</option>
+              </select>
+              <select class="orders-input" id="leadsFilterGroupBy" aria-label="How to group rows">
+                <option value="1" selected>One row per person (merged)</option>
+                <option value="0">Every submission (raw)</option>
               </select>
               <select class="orders-input" id="leadsFilterConverted" aria-label="Converted filter">
                 <option value="">Converted: any</option>
@@ -458,7 +521,7 @@
           <div class="table-wrap table-wrap--wide" id="leadsTableWrap" hidden>
             <table class="data-table data-table--dense" id="leadsTable">
               <thead>
-                <tr>
+                <tr id="leadsTableHeadRow">
                   <th>Last seen</th>
                   <th>Lead code</th>
                   <th>Session ID</th>
@@ -473,7 +536,7 @@
                   <th>Interest score</th>
                   <th>Interest level</th>
                   <th>Status</th>
-                  <th>Open</th>
+                  <th>Expand</th>
                 </tr>
               </thead>
               <tbody id="leadsTbody"></tbody>
@@ -488,8 +551,9 @@
 
         <!-- ── LEFT WITHOUT PAYING (Abandoned) ───────────────────────────────── -->
         <section class="panel hidden" id="panel-abandoned" data-panel>
-          <p class="panel-intro">People who started checkout but didn't complete payment. Phone number is visible in each row — expand to see their full story.</p>
+          <p class="panel-intro">Incomplete checkouts. By default one row per person when linked; expand for each attempt. Switch to raw for one row per checkout session.</p>
           <div class="primary-metrics-row" id="abandonedPrimaryStrip" aria-live="polite"></div>
+          <p class="detail-muted" id="abandonedAppliedFilters" style="margin:6px 0 10px;">Filters: default</p>
 
           <div class="filter-card">
             <div class="filter-card-head">
@@ -503,6 +567,10 @@
               </div>
             </div>
             <div class="admin-filters" id="abandonedFilters">
+              <select class="orders-input" id="abandonedFilterGroupBy" aria-label="How to group rows">
+                <option value="1" selected>One row per person (merged)</option>
+                <option value="0">Every checkout (raw)</option>
+              </select>
               <input type="search" class="orders-input" id="abandonedFilterSearch" placeholder="Visit ID / email / phone" />
               <input type="text" class="orders-input" id="abandonedFilterStage" placeholder="Checkout stage (e.g. form_submit)" />
               <input type="text" class="orders-input" id="abandonedFilterUtmCampaign" placeholder="Campaign name contains…" />
@@ -517,7 +585,7 @@
           <div class="table-wrap table-wrap--wide" id="abandonedTableWrap" hidden>
             <table class="data-table data-table--dense" id="abandonedTable">
               <thead>
-                <tr>
+                <tr id="abandonedTableHeadRow">
                   <th>Last activity</th>
                   <th>Checkout stage</th>
                   <th>Phone</th>
@@ -527,7 +595,7 @@
                   <th>Checkout session</th>
                   <th>Traffic source</th>
                   <th>Paid?</th>
-                  <th>Open</th>
+                  <th>Expand</th>
                 </tr>
               </thead>
               <tbody id="abandonedTbody"></tbody>
@@ -542,7 +610,7 @@
 
         <!-- ── SITE VISITORS ───────────────────────────────── -->
         <section class="panel hidden" id="panel-visitors" data-panel>
-          <p class="panel-intro">Everyone who visited your site — anonymous and identified. A visitor becomes a lead the moment they share their email or phone.</p>
+          <p class="panel-intro">Site visits. Default is one row per person when a profile link exists; expand for session-level history. Use raw for every browser session.</p>
           <div class="primary-metrics-row" id="visitorsPrimaryStrip" aria-live="polite"></div>
 
           <div class="filter-card">
@@ -556,6 +624,10 @@
               </div>
             </div>
             <div class="admin-filters admin-filters--wrap" id="visitorsFilters">
+              <select class="orders-input" id="visitorsFilterGroupBy" aria-label="How to group rows">
+                <option value="1" selected>One row per person (merged)</option>
+                <option value="0">Every visit session (raw)</option>
+              </select>
               <input type="search" class="orders-input" id="visitorsFilterSearch" placeholder="Search visit ID, page, email or phone" />
               <select class="orders-input" id="visitorsFilterConverted" aria-label="Contact conversion">
                 <option value="">Converted to lead: any</option>
@@ -573,13 +645,13 @@
           <div class="table-wrap table-wrap--wide" id="visitorsTableWrap" hidden>
             <table class="data-table data-table--dense" id="visitorsTable">
               <thead>
-                <tr>
+                <tr id="visitorsTableHeadRow">
                   <th>Last seen</th>
                   <th>Visit ID</th>
                   <th>First page</th>
                   <th>Traffic source</th>
                   <th>Became a lead?</th>
-                  <th>Open</th>
+                  <th>Expand</th>
                 </tr>
               </thead>
               <tbody id="visitorsTbody"></tbody>
@@ -596,6 +668,7 @@
         <section class="panel hidden" id="panel-analytics" data-panel>
           <p class="panel-intro">How many people visited each page and how long they stayed. Shows unique visitors and total events per page for the selected period.</p>
           <div class="primary-metrics-row" id="analyticsPrimaryStrip" aria-live="polite"></div>
+          <p class="detail-muted" id="analyticsAppliedFilters" style="margin:6px 0 10px;">Filters: default</p>
 
           <div class="filter-card">
             <div class="filter-card-head">

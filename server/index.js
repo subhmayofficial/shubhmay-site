@@ -39,6 +39,8 @@ import {
   adminListOrders,
   adminOrdersSummary,
   adminListCustomers,
+  adminListProfiles,
+  adminProfileDetail,
   adminListLeads,
   adminListAbandoned,
   adminUpdateOrderStatus,
@@ -51,6 +53,7 @@ import {
   adminVisitorTimeline,
   adminAbandonedCheckoutContext,
   adminCustomerActivityTimeline,
+  adminRebuildProfilesNow,
 } from './lib/admin.js';
 import { adminPageAnalytics, adminPageAnalyticsDetail } from './lib/pageAnalytics.js';
 import { getConnectionsSnapshot, runConnectionTests } from './lib/connectionsHealth.js';
@@ -469,6 +472,16 @@ app.post('/api/admin/connections/test', async (req, res) => {
   }
 });
 
+app.post('/api/admin/profiles/rebuild-now', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const out = await adminRebuildProfilesNow(getConfig());
+  if (!out.ok) {
+    res.status(502).json({ ok: false, error: out.error ?? 'Rebuild failed' });
+    return;
+  }
+  res.json({ ok: true });
+});
+
 app.post('/api/admin/settings', (req, res) => {
   if (!requireAdmin(req, res)) return;
   const b = req.body || {};
@@ -599,6 +612,8 @@ app.get('/api/admin/visitors', async (req, res) => {
     total: out.total,
     page: out.page,
     perPage: out.perPage,
+    grouped: out.grouped,
+    truncated: out.truncated,
   });
 });
 
@@ -652,6 +667,33 @@ app.get('/api/admin/customers', async (req, res) => {
   });
 });
 
+app.get('/api/admin/profiles', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const out = await adminListProfiles(getConfig(), req.query);
+  if (!out.ok) {
+    res.status(502).json({ ok: false, error: out.error ?? 'List failed' });
+    return;
+  }
+  res.json({
+    ok: true,
+    profiles: out.rows,
+    total: out.total,
+    page: out.page,
+    perPage: out.perPage,
+  });
+});
+
+app.get('/api/admin/profiles/:id', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const out = await adminProfileDetail(getConfig(), req.params.id);
+  if (!out.ok) {
+    const code = out.error === 'Profile not found' ? 404 : 502;
+    res.status(code).json({ ok: false, error: out.error ?? 'Failed' });
+    return;
+  }
+  res.json(out);
+});
+
 app.get('/api/admin/customers/:id/activity-timeline', async (req, res) => {
   if (!requireAdmin(req, res)) return;
   const out = await adminCustomerActivityTimeline(getConfig(), req.params.id);
@@ -676,6 +718,8 @@ app.get('/api/admin/leads', async (req, res) => {
     total: out.total,
     page: out.page,
     perPage: out.perPage,
+    grouped: out.grouped,
+    truncated: out.truncated,
   });
 });
 
@@ -692,6 +736,8 @@ app.get('/api/admin/abandoned-checkouts', async (req, res) => {
     total: out.total,
     page: out.page,
     perPage: out.perPage,
+    grouped: out.grouped,
+    truncated: out.truncated,
   });
 });
 

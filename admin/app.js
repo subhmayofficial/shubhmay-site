@@ -15,12 +15,25 @@
     dashboard: 'Dashboard',
     orders: 'Orders',
     customers: 'Customers',
-    visitors: 'Site Visitors',
+    profiles: 'Profiles',
     leads: 'Leads',
     analytics: 'Page Traffic',
     abandoned: 'Left Without Paying',
     settings: 'Settings',
   };
+
+  var LEADS_THEAD_MERGED =
+    '<th>Last seen</th><th>Submissions</th><th>Email</th><th>Name</th><th>Phone</th><th>Status</th><th>Traffic</th><th>Expand</th>';
+  var LEADS_THEAD_RAW =
+    '<th>Last seen</th><th>Lead code</th><th>Session ID</th><th>Email</th><th>Name</th><th>Phone</th><th>Source page</th><th>Traffic source</th><th>Campaign</th><th>Landing page</th><th>Came from</th><th>Interest score</th><th>Interest level</th><th>Status</th><th>Expand</th>';
+  var VISITORS_THEAD_MERGED =
+    '<th>Last seen</th><th>Visits</th><th>Latest session</th><th>First page</th><th>Traffic</th><th>Lead?</th><th>Expand</th>';
+  var VISITORS_THEAD_RAW =
+    '<th>Last seen</th><th>Visit ID</th><th>First page</th><th>Traffic source</th><th>Became a lead?</th><th>Expand</th>';
+  var ABANDONED_THEAD_MERGED =
+    '<th>Last activity</th><th>Attempts</th><th>Phone</th><th>Name</th><th>Email</th><th>Latest product</th><th>Paid?</th><th>Expand</th>';
+  var ABANDONED_THEAD_RAW =
+    '<th>Last activity</th><th>Checkout stage</th><th>Phone</th><th>Name</th><th>Email</th><th>Product</th><th>Checkout session</th><th>Traffic source</th><th>Paid?</th><th>Expand</th>';
 
   var currentPanel = 'dashboard';
   var adminConnected = false;
@@ -135,6 +148,7 @@
   function readRouteHash() {
     var m = /^#\/([^/?]+)/.exec(location.hash || '');
     var id = m && m[1] ? m[1] : 'dashboard';
+    if (id === 'visitors') return 'leads';
     return titles[id] ? id : 'dashboard';
   }
 
@@ -337,6 +351,7 @@
   }
 
   var ordersPage = 1;
+  var profilesPage = 1;
   var leadsPage = 1;
   var visitorsPage = 1;
   var customersPage = 1;
@@ -374,6 +389,7 @@
   var DATE_PANEL_IDS = {
     orders: ['ordersFilterDateFrom', 'ordersFilterDateTo'],
     customers: ['customersFilterDateFrom', 'customersFilterDateTo'],
+    profiles: ['profilesFilterDateFrom', 'profilesFilterDateTo'],
     leads: ['leadsFilterDateFrom', 'leadsFilterDateTo'],
     visitors: ['visitorsFilterDateFrom', 'visitorsFilterDateTo'],
     analytics: ['analyticsDateFrom', 'analyticsDateTo'],
@@ -384,6 +400,7 @@
   var presetDateIsoByPanel = {
     orders: null,
     customers: null,
+    profiles: null,
     leads: null,
     visitors: null,
     analytics: null,
@@ -459,7 +476,11 @@
         } else if (panel === 'abandoned') {
           abandonedPage = 1;
           loadAbandoned();
+        } else if (panel === 'profiles') {
+          profilesPage = 1;
+          loadProfiles();
         }
+        setAppliedFiltersText(panel, summarizeFilters(panel));
       })
       .catch(function () {});
   }
@@ -783,17 +804,73 @@
     );
   }
 
-  function fillPrimaryMetricsRow(el, period, subtitle) {
+  function fillPrimaryMetricsRow(el, period, subtitle, mode) {
     if (!el) return;
     var t = period || {};
-    var tiles = [
-      { label: 'Revenue (window)', value: t.revenueInr != null ? '₹' + Number(t.revenueInr).toFixed(2) : '—', sub: 'Paid orders in range' },
-      { label: 'Paid orders', value: t.ordersPaid, sub: 'Razorpay paid' },
-      { label: 'New leads', value: t.leadsCollected, sub: 'First touch in range' },
-      { label: 'Leads → paid', value: t.leadsConverted, sub: (t.leadToOrderConversionPercent != null ? t.leadToOrderConversionPercent + '%' : '—') + ' of cohort' },
-      { label: 'Visitors (active)', value: t.visitorsActiveInPeriod, sub: 'Had activity in range' },
-      { label: 'Page views', value: t.pageViewsTotal, sub: 'Tracked page_view events' },
-    ];
+    var tiles;
+    switch (mode) {
+      case 'orders':
+        tiles = [
+          { label: 'Revenue (window)', value: t.revenueInr != null ? '₹' + Number(t.revenueInr).toFixed(2) : '—', sub: 'Paid orders in range' },
+          { label: 'Paid orders', value: t.ordersPaid, sub: 'Razorpay paid' },
+          { label: 'Lead-attributed paid', value: t.ordersAttributedToLead, sub: 'Order has linked lead' },
+          { label: 'Direct paid orders', value: t.ordersDirectPurchase, sub: 'No linked lead' },
+          { label: 'Leads → paid', value: t.leadToOrderConversionPercent != null ? t.leadToOrderConversionPercent + '%' : '—', sub: 'Current analytics window' },
+        ];
+        break;
+      case 'customers':
+        tiles = [
+          { label: 'Customers active', value: t.customerProfilesActive, sub: 'Profiles in customer stage' },
+          { label: 'Paid orders', value: t.ordersPaid, sub: 'Associated paid orders' },
+          { label: 'Revenue (window)', value: t.revenueInr != null ? '₹' + Number(t.revenueInr).toFixed(2) : '—', sub: 'From paid orders' },
+          { label: 'Leads converted', value: t.leadsConverted, sub: 'Became customers in range' },
+        ];
+        break;
+      case 'profiles':
+        tiles = [
+          { label: 'Profiles active', value: t.profilesActive, sub: 'Merged contact profiles active' },
+          { label: 'Customers active', value: t.customerProfilesActive, sub: 'Customer-stage profiles' },
+          { label: 'Paid orders', value: t.ordersPaid, sub: 'Linked paid orders' },
+          { label: 'Revenue (window)', value: t.revenueInr != null ? '₹' + Number(t.revenueInr).toFixed(2) : '—', sub: 'From linked orders/bookings' },
+          { label: 'Leads active', value: t.leadsActiveInPeriod, sub: 'Contact profiles with lead activity' },
+        ];
+        break;
+      case 'leads':
+        tiles = [
+          { label: 'New leads', value: t.leadsCollected, sub: 'First touch in range' },
+          { label: 'Leads active', value: t.leadsActiveInPeriod, sub: 'last_seen in range' },
+          { label: 'Leads converted', value: t.leadsConverted, sub: 'Converted to paid' },
+          { label: 'Lead → paid %', value: t.leadToOrderConversionPercent != null ? t.leadToOrderConversionPercent + '%' : '—', sub: 'Current cohort' },
+          { label: 'Revenue from leads', value: t.revenueFromLeadInr != null ? '₹' + Number(t.revenueFromLeadInr).toFixed(2) : '—', sub: 'Lead-attributed orders' },
+        ];
+        break;
+      case 'abandoned':
+        tiles = [
+          { label: 'Checkout starts', value: t.checkoutStarted, sub: 'Reached checkout in range' },
+          { label: 'Checkout drops', value: t.checkoutDropped, sub: 'No completion' },
+          { label: 'Drop rate', value: t.checkoutDropRatePercent != null ? t.checkoutDropRatePercent + '%' : '—', sub: 'Started vs dropped' },
+          { label: 'Recovered to paid', value: t.abandonedRecovered, sub: 'Later converted' },
+          { label: 'Recovered revenue', value: t.revenueRecoveredInr != null ? '₹' + Number(t.revenueRecoveredInr).toFixed(2) : '—', sub: 'Recovered payments' },
+        ];
+        break;
+      case 'analytics':
+        tiles = [
+          { label: 'Page views', value: t.pageViewsTotal, sub: 'Tracked page_view events' },
+          { label: 'Visitors active', value: t.visitorsActiveInPeriod, sub: 'Had activity in range' },
+          { label: 'Leads active', value: t.leadsActiveInPeriod, sub: 'Contact activity in range' },
+          { label: 'Funnel drops', value: t.funnelDropOffs, sub: 'No next step within 10 min' },
+        ];
+        break;
+      default:
+        tiles = [
+          { label: 'Revenue (window)', value: t.revenueInr != null ? '₹' + Number(t.revenueInr).toFixed(2) : '—', sub: 'Paid orders in range' },
+          { label: 'Paid orders', value: t.ordersPaid, sub: 'Razorpay paid' },
+          { label: 'New leads', value: t.leadsCollected, sub: 'First touch in range' },
+          { label: 'Leads → paid', value: t.leadToOrderConversionPercent != null ? t.leadToOrderConversionPercent + '%' : '—', sub: 'Conversion' },
+          { label: 'Profiles active', value: t.profilesActive, sub: 'Merged people active in range' },
+        ];
+        break;
+    }
     el.innerHTML = '';
     if (subtitle) {
       var p = document.createElement('p');
@@ -834,7 +911,12 @@
           stripEl.innerHTML = '<p class="detail-muted" style="grid-column:1/-1;">Metrics unavailable.</p>';
           return;
         }
-        fillPrimaryMetricsRow(stripEl, a.period || a.today, 'Today (IST midnight window)');
+        var m = 'profiles';
+        if (stripEl.id === 'ordersPrimaryStrip') m = 'orders';
+        else if (stripEl.id === 'customersPrimaryStrip') m = 'customers';
+        else if (stripEl.id === 'leadsPrimaryStrip') m = 'leads';
+        else if (stripEl.id === 'abandonedPrimaryStrip') m = 'abandoned';
+        fillPrimaryMetricsRow(stripEl, a.period || a.today, 'Today (IST midnight window)', m);
       })
       .catch(function () {
         stripEl.innerHTML = '<p class="detail-muted" style="grid-column:1/-1;">Network error.</p>';
@@ -853,7 +935,7 @@
           stripEl.innerHTML = '<p class="detail-muted" style="grid-column:1/-1;">Load failed.</p>';
           return;
         }
-        fillPrimaryMetricsRow(stripEl, a.period || a.today, 'Same window as page table below');
+        fillPrimaryMetricsRow(stripEl, a.period || a.today, 'Same window as page table below', 'analytics');
         if (pages && pages.ok && Array.isArray(pages.pages) && pages.pages.length) {
           var top = pages.pages.slice().sort(function (x, y) { return (y.events || 0) - (x.events || 0); })[0];
           var hint = document.createElement('div');
@@ -873,6 +955,163 @@
       .catch(function () {
         stripEl.innerHTML = '<p class="detail-muted" style="grid-column:1/-1;">Network error.</p>';
       });
+  }
+
+  function setStripTiles(stripEl, tiles, subtitle) {
+    if (!stripEl) return;
+    stripEl.innerHTML = '';
+    if (subtitle) {
+      var p = document.createElement('p');
+      p.className = 'detail-muted';
+      p.style.cssText = 'grid-column:1/-1;margin:0 0 8px;font-size:12px;';
+      p.textContent = subtitle;
+      stripEl.appendChild(p);
+    }
+    (tiles || []).forEach(function (x) {
+      var d = document.createElement('div');
+      d.className = 'primary-metric-card';
+      d.innerHTML =
+        '<div class="primary-metric-label">' +
+        esc(x.label) +
+        '</div><div class="primary-metric-value">' +
+        esc(String(x.value != null ? x.value : '—')) +
+        '</div><div class="primary-metric-sub">' +
+        esc(x.sub || '') +
+        '</div>';
+      stripEl.appendChild(d);
+    });
+  }
+
+  function setAppliedFiltersText(panel, text) {
+    var el = document.getElementById(panel + 'AppliedFilters');
+    if (!el) return;
+    el.textContent = 'Filters: ' + (text || 'default');
+  }
+
+  function summarizeFilters(panel) {
+    function gv(id) {
+      var el = document.getElementById(id);
+      return el && el.value != null ? String(el.value).trim() : '';
+    }
+    var out = [];
+    if (panel === 'orders') {
+      if (gv('ordersFilterSearch')) out.push('search=' + gv('ordersFilterSearch'));
+      if (gv('ordersFilterOrderStatus')) out.push('order=' + gv('ordersFilterOrderStatus'));
+      if (gv('ordersFilterAcquisition')) out.push('acq=' + gv('ordersFilterAcquisition'));
+      if (gv('ordersFilterDateFrom') || gv('ordersFilterDateTo')) out.push('date range');
+    } else if (panel === 'customers') {
+      if (gv('customersFilterSearch')) out.push('search=' + gv('customersFilterSearch'));
+      if (gv('customersFilterPaying')) out.push('paying=' + gv('customersFilterPaying'));
+      if (gv('customersFilterDateFrom') || gv('customersFilterDateTo')) out.push('date range');
+    } else if (panel === 'profiles') {
+      if (gv('profilesFilterSearch')) out.push('search=' + gv('profilesFilterSearch'));
+      if (gv('profilesFilterLifecycle')) out.push('stage=' + gv('profilesFilterLifecycle'));
+      if (gv('profilesFilterDateFrom') || gv('profilesFilterDateTo')) out.push('date range');
+    } else if (panel === 'leads') {
+      if (gv('leadsFilterSearch')) out.push('search=' + gv('leadsFilterSearch'));
+      if (gv('leadsFilterUtmSource')) out.push('utm_source=' + gv('leadsFilterUtmSource'));
+      if (gv('leadsFilterUtmMedium')) out.push('utm_medium=' + gv('leadsFilterUtmMedium'));
+      if (gv('leadsFilterUtmCampaign')) out.push('utm_campaign=' + gv('leadsFilterUtmCampaign'));
+      if (gv('leadsFilterLeadStatus')) out.push('status=' + gv('leadsFilterLeadStatus'));
+      if (gv('leadsFilterConverted')) out.push('converted=' + gv('leadsFilterConverted'));
+      if (gv('leadsFilterGroupBy')) out.push(gv('leadsFilterGroupBy') === '1' ? 'merged rows' : 'raw rows');
+      if (gv('leadsFilterDateFrom') || gv('leadsFilterDateTo')) out.push('date range');
+    } else if (panel === 'abandoned') {
+      if (gv('abandonedFilterSearch')) out.push('search=' + gv('abandonedFilterSearch'));
+      if (gv('abandonedFilterStage')) out.push('stage=' + gv('abandonedFilterStage'));
+      if (gv('abandonedFilterUtmCampaign')) out.push('utm_campaign=' + gv('abandonedFilterUtmCampaign'));
+      if (gv('abandonedFilterGroupBy')) out.push(gv('abandonedFilterGroupBy') === '1' ? 'merged rows' : 'raw rows');
+      if (gv('abandonedFilterDateFrom') || gv('abandonedFilterDateTo')) out.push('date range');
+    } else if (panel === 'analytics') {
+      if (gv('analyticsDateFrom') || gv('analyticsDateTo')) out.push('date range');
+      if (!out.length) out.push('preset=' + (analyticsPreset || 'last7'));
+    }
+    return out.join(' · ');
+  }
+
+  function updateCustomersStripFromRows(rows, total) {
+    var strip = document.getElementById('customersPrimaryStrip');
+    if (!strip) return;
+    rows = Array.isArray(rows) ? rows : [];
+    var paying = rows.filter(function (r) { return !!r.is_paying_customer; }).length;
+    var rev = rows.reduce(function (s, r) { return s + (Number(r.total_spent_paise || 0) || 0); }, 0);
+    setStripTiles(
+      strip,
+      [
+        { label: 'Customers matched', value: total != null ? total : rows.length, sub: 'Current filters' },
+        { label: 'Paying (this page)', value: paying, sub: 'Rows in current page' },
+        { label: 'Spent (this page)', value: fmtMoneyPaise(rev, 'INR'), sub: 'Sum of visible rows' },
+      ],
+      'Cards follow current customer filters'
+    );
+  }
+
+  function updateProfilesStripFromRows(rows, total) {
+    var strip = document.getElementById('profilesPrimaryStrip');
+    if (!strip) return;
+    rows = Array.isArray(rows) ? rows : [];
+    var leads = rows.filter(function (r) { return String(r.lifecycle_stage || '') === 'lead'; }).length;
+    var customers = rows.filter(function (r) { return String(r.lifecycle_stage || '') === 'customer'; }).length;
+    var rev = rows.reduce(function (s, r) { return s + (Number(r.total_revenue_paise || 0) || 0); }, 0);
+    setStripTiles(
+      strip,
+      [
+        { label: 'Profiles matched', value: total != null ? total : rows.length, sub: 'Current filters' },
+        { label: 'Lead stage (page)', value: leads, sub: 'Visible rows' },
+        { label: 'Customer stage (page)', value: customers, sub: 'Visible rows' },
+        { label: 'Revenue (page)', value: fmtMoneyPaise(rev, 'INR'), sub: 'Visible rows total' },
+      ],
+      'Cards follow current profile filters'
+    );
+  }
+
+  function updateLeadsStripFromRows(rows, total, grouped) {
+    var strip = document.getElementById('leadsPrimaryStrip');
+    if (!strip) return;
+    rows = Array.isArray(rows) ? rows : [];
+    var converted = 0;
+    var high = 0;
+    var contacts = 0;
+    rows.forEach(function (r) {
+      var base = grouped && r && r.primary_lead ? r.primary_lead : r;
+      if (!base) return;
+      if (base.converted_order_id) converted += 1;
+      if (String(base.intent_tier || '').toLowerCase() === 'high') high += 1;
+      if ((base.email && String(base.email).trim()) || (base.phone && String(base.phone).trim())) contacts += 1;
+    });
+    setStripTiles(
+      strip,
+      [
+        { label: 'Lead rows matched', value: total != null ? total : rows.length, sub: grouped ? 'Merged people rows' : 'Raw submissions' },
+        { label: 'With contact (page)', value: contacts, sub: 'Visible rows' },
+        { label: 'Converted (page)', value: converted, sub: 'Has paid order link' },
+        { label: 'High intent (page)', value: high, sub: 'Intent tier = high' },
+      ],
+      'Cards follow current lead filters'
+    );
+  }
+
+  function updateAbandonedStripFromRows(rows, total, grouped) {
+    var strip = document.getElementById('abandonedPrimaryStrip');
+    if (!strip) return;
+    rows = Array.isArray(rows) ? rows : [];
+    var paid = 0;
+    var dropped = 0;
+    rows.forEach(function (r) {
+      var base = grouped && r && r.primary_checkout ? r.primary_checkout : r;
+      if (!base) return;
+      if (base.converted_order_id) paid += 1;
+      else dropped += 1;
+    });
+    setStripTiles(
+      strip,
+      [
+        { label: 'Rows matched', value: total != null ? total : rows.length, sub: grouped ? 'Merged people rows' : 'Raw checkout rows' },
+        { label: 'Dropped (page)', value: dropped, sub: 'No conversion' },
+        { label: 'Recovered/paid (page)', value: paid, sub: 'Converted later' },
+      ],
+      'Cards follow current abandoned filters'
+    );
   }
 
   function sectionHtml(heading, inner) {
@@ -1476,6 +1715,24 @@
 
   if (detailModal) {
     detailModal.addEventListener('click', function (e) {
+      var profBtn = e.target && e.target.closest ? e.target.closest('.js-rollup-open-profile') : null;
+      if (profBtn && detailModal.contains(profBtn)) {
+        e.preventDefault();
+        var pid = profBtn.getAttribute('data-profile-id');
+        if (!pid) return;
+        openDetailHtml('Merged profile', '<p class="detail-muted">Loading…</p>');
+        fetch('/api/admin/profiles/' + encodeURIComponent(pid), { headers: authHeaders() })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (data) {
+            openDetailHtml('Merged profile', renderProfileDetail(data));
+          })
+          .catch(function () {
+            openDetailHtml('Merged profile', '<p class="detail-muted">Failed to load.</p>');
+          });
+        return;
+      }
       var btn = e.target && e.target.closest ? e.target.closest('.js-load-order-journey') : null;
       if (!btn || !detailModal.contains(btn)) return;
       e.preventDefault();
@@ -1548,10 +1805,191 @@
     return head + sectionHtml('Activity (what they did)', '<div class="timeline-wrap">' + cards + '</div>');
   }
 
+  function renderProfileDetail(data) {
+    if (!data || !data.ok) {
+      return '<p class="detail-muted">Could not load profile.</p>';
+    }
+    var p = data.profile || {};
+    var events = Array.isArray(data.events) ? data.events : [];
+    var orders = Array.isArray(data.orders) ? data.orders : [];
+    var leads = Array.isArray(data.leads) ? data.leads : [];
+    var visitors = Array.isArray(data.visitors) ? data.visitors : [];
+    var abandoned = Array.isArray(data.abandonedCheckouts) ? data.abandonedCheckouts : [];
+    var bookings = Array.isArray(data.consultancyBookings) ? data.consultancyBookings : [];
+    var customers = Array.isArray(data.customers) ? data.customers : [];
+
+    var summary =
+      kvRow('Profile ID', p.id, true) +
+      kvRow('Name', p.canonical_name) +
+      kvRow('Email', p.canonical_email) +
+      kvRow('Phone', p.canonical_phone) +
+      kvRow('Lifecycle stage', p.lifecycle_stage) +
+      kvRow('Lead status', p.lead_status) +
+      kvRow('First seen', fmtTs(p.first_seen_at)) +
+      kvRow('Last seen', fmtTs(p.last_seen_at)) +
+      kvRow('Total orders', p.total_orders != null ? String(p.total_orders) : '—') +
+      kvRow('Total revenue', fmtMoneyPaise(p.total_revenue_paise, 'INR'));
+
+    var attribution =
+      kvRow('First touch page', p.firstTouchPath || p.first_touch_path) +
+      kvRow('First touch source', p.firstTouchSource || p.first_touch_source) +
+      kvRow('First touch referrer', p.firstTouchReferrer || p.first_touch_referrer) +
+      kvRow('Last touch page', p.lastTouchPath || p.last_touch_path) +
+      kvRow('Last touch source', p.lastTouchSource || p.last_touch_source) +
+      kvRow('Last touch referrer', p.lastTouchReferrer || p.last_touch_referrer);
+
+    var linked =
+      kvRow('Linked visitors', String(visitors.length)) +
+      kvRow('Linked leads', String(leads.length)) +
+      kvRow('Linked checkouts', String(abandoned.length)) +
+      kvRow('Linked bookings', String(bookings.length)) +
+      kvRow('Linked orders', String(orders.length)) +
+      kvRow('Linked customers', String(customers.length));
+
+    var latestDrop = p.latest_drop || ((data.drops || []).length ? data.drops[data.drops.length - 1] : null);
+    var funnelBlock =
+      kvRow('Latest drop point', latestDrop ? ((latestDrop.meta && latestDrop.meta.funnel) || 'funnel') + ' · ' + ((latestDrop.meta && latestDrop.meta.step_name) || latestDrop.stage || 'step') : 'No recent drop derived') +
+      kvRow('Drop window', latestDrop && latestDrop.meta ? String(latestDrop.meta.drop_window_minutes || 10) + ' minutes' : '10 minutes');
+
+    var mergeBlock = '';
+    var mh = p.meta && p.meta.merge_history;
+    if (Array.isArray(mh) && mh.length) {
+      mergeBlock = sectionHtml(
+        'Merge history (duplicate profiles unified)',
+        mh
+          .map(function (h) {
+            var ids = Array.isArray(h.merged_profile_ids) ? h.merged_profile_ids.join(', ') : '—';
+            return kvRow(fmtTs(h.at), ids, true);
+          })
+          .join('')
+      );
+    }
+
+    var html =
+      sectionHtml('Business snapshot', summary) +
+      mergeBlock +
+      sectionHtml('Attribution', attribution) +
+      sectionHtml('Linked records', linked) +
+      sectionHtml('Funnels', funnelBlock);
+
+    if (customers.length) html += sectionHtml('Customers', customers.map(function (c) { return kvRow(c.email || c.name || c.id, fmtMoneyPaise(c.total_spent_paise, 'INR')); }).join(''));
+    if (orders.length) html += sectionHtml('Orders', orders.map(function (o) { return kvRow(o.product_slug || o.id, fmtMoneyPaise(o.amount_paise, o.currency) + ' · ' + fmtTs(o.paid_at)); }).join(''));
+    if (bookings.length) html += sectionHtml('Consultancy bookings', bookings.map(function (b) { return kvRow(b.plan_name || b.plan_code || b.id, fmtTs(b.slot_start)); }).join(''));
+    if (abandoned.length) html += sectionHtml('Abandoned checkouts', abandoned.map(function (a) { return kvRow(a.product_slug || a.id, (a.stage || '—') + ' · ' + fmtTs(a.last_event_at)); }).join(''));
+    if (visitors.length) html += sectionHtml('Visitors', visitors.map(function (v) { return kvRow(v.session_id || v.id, v.landing_path || '—', true); }).join(''));
+    if (leads.length) html += sectionHtml('Leads', leads.map(function (l) { return kvRow(l.email || l.phone || l.id, l.lead_status || '—'); }).join(''));
+    if (p.meta && typeof p.meta === 'object') html += sectionHtml('Profile meta', flatObjectKv(p.meta));
+    html += renderHumanActivityTimeline(events);
+    return html;
+  }
+
   function bindExpand(btn, kind, row) {
     btn.addEventListener('click', function () {
       var html = '';
       var title = 'Details';
+      if (kind === 'profile') {
+        title = 'Profile details';
+        openDetailHtml(title, '<p class="detail-muted">Loading…</p>');
+        fetch('/api/admin/profiles/' + encodeURIComponent(row.id), { headers: authHeaders() })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (data) {
+            openDetailHtml(title, renderProfileDetail(data));
+          })
+          .catch(function () {
+            openDetailHtml(title, '<p class="detail-muted">Failed to load.</p>');
+          });
+        return;
+      }
+      if (kind === 'lead_rollup') {
+        title = (row.lead_count != null ? String(row.lead_count) : '0') + ' lead ' + (row.lead_count === 1 ? 'record' : 'records');
+        var lb = [];
+        if (row.person_profile_id) {
+          lb.push(
+            '<p style="margin:0 0 12px;"><button type="button" class="btn btn--small js-rollup-open-profile" data-profile-id="' +
+              esc(row.person_profile_id) +
+              '">Open merged profile</button></p>'
+          );
+        }
+        (row.leads || []).forEach(function (l, i) {
+          lb.push(
+            '<div class="detail-section"><h3 class="detail-subhead">Submission ' +
+              (i + 1) +
+              ' · ' +
+              esc((l.id || '').slice(0, 8).toUpperCase()) +
+              '</h3>' +
+              renderLeadDetail(l) +
+              '</div>'
+          );
+        });
+        openDetailHtml(title, lb.join('') || '<p class="detail-muted">No records.</p>');
+        return;
+      }
+      if (kind === 'visitor_group') {
+        title = 'Visit history';
+        if (row.person_profile_id) {
+          openDetailHtml('Merged profile', '<p class="detail-muted">Loading…</p>');
+          fetch('/api/admin/profiles/' + encodeURIComponent(row.person_profile_id), { headers: authHeaders() })
+            .then(function (r) {
+              return r.json();
+            })
+            .then(function (data) {
+              openDetailHtml('Merged profile', renderProfileDetail(data));
+            })
+            .catch(function () {
+              openDetailHtml('Merged profile', '<p class="detail-muted">Failed to load.</p>');
+            });
+          return;
+        }
+        openDetailHtml(title, '<p class="detail-muted">Loading sessions…</p>');
+        var vlist = row.visitors || [];
+        Promise.all(
+          vlist.map(function (v) {
+            return fetch('/api/admin/visitors/' + encodeURIComponent(v.id) + '/timeline', { headers: authHeaders() }).then(function (r) {
+              return r.json();
+            });
+          })
+        )
+          .then(function (results) {
+            var html = vlist
+              .map(function (v, i) {
+                return (
+                  '<div class="detail-section"><h3 class="detail-subhead">Session ' +
+                  esc((v.session_id || v.id || '').slice(0, 24)) +
+                  '</h3>' +
+                  renderVisitorTimeline(results[i] || {}) +
+                  '</div>'
+                );
+              })
+              .join('');
+            openDetailHtml(title, html || '<p class="detail-muted">No sessions.</p>');
+          })
+          .catch(function () {
+            openDetailHtml(title, '<p class="detail-muted">Failed to load.</p>');
+          });
+        return;
+      }
+      if (kind === 'abandoned_rollup') {
+        title = (row.checkout_count != null ? String(row.checkout_count) : '0') + ' checkout ' + (row.checkout_count === 1 ? 'attempt' : 'attempts');
+        var abBits = (row.abandoned_rows || []).map(function (ar, i) {
+          return (
+            '<div class="detail-section"><h3 class="detail-subhead">Attempt ' +
+            (i + 1) +
+            ' · ' +
+            esc(String(ar.stage || '—')) +
+            '</h3>' +
+            renderAbandonedDetail(ar) +
+            '</div>'
+          );
+        });
+        openDetailHtml(
+          title,
+          (abBits.join('') || '<p class="detail-muted">No rows.</p>') +
+            '<p class="detail-muted" style="margin-top:12px;">Tip: use "Every checkout (raw)" and Open one row to load conversion insight for a single session.</p>'
+        );
+        return;
+      }
       if (kind === 'visitor') {
         title = 'Visitor activity';
         openDetailHtml(title, '<p class="detail-muted">Loading…</p>');
@@ -1833,7 +2271,7 @@
             esc(row.id) +
             '">Save</button></div></td><td><button type="button" class="btn btn--small btn--ghost" data-detail-order="' +
             idx +
-            '">Open</button></td>';
+            '">Expand</button></td>';
           tbody.appendChild(tr);
           var btn = tr.querySelector('[data-detail-order="' + idx + '"]');
           if (btn) bindExpand(btn, 'order', row);
@@ -1911,6 +2349,7 @@
         var rows = res.j.customers || [];
         var total = res.j.total != null ? res.j.total : rows.length;
         var perPage = res.j.perPage || 10;
+        updateCustomersStripFromRows(rows, total);
         if (!tbody || !wrap) return;
         tbody.innerHTML = '';
         rows.forEach(function (row, idx) {
@@ -1934,8 +2373,8 @@
             idx +
             '">Expand</button></td>';
           tbody.appendChild(tr);
-          var btn = tr.querySelector('[data-detail-cu="' + idx + '"]');
-          if (btn) bindExpand(btn, 'customer', row);
+          var btnCu = tr.querySelector('[data-detail-cu="' + idx + '"]');
+          if (btnCu) bindExpand(btnCu, 'customer', row);
         });
         wrap.hidden = rows.length === 0;
         if (rows.length === 0) setMsg(msg, 'No customers match.', false);
@@ -1972,6 +2411,8 @@
     if (imax && imax.value !== '' && !Number.isNaN(Number(imax.value))) p.set('intent_max', String(imax.value));
     var df = document.getElementById('leadsFilterDateField');
     if (df && df.value) p.set('date_field', df.value);
+    var gb = document.getElementById('leadsFilterGroupBy');
+    if (gb && gb.value === '1') p.set('group_by_person', '1');
     appendDateRangeFromInputsOrPreset(p, 'leads', 'leadsFilterDateFrom', 'leadsFilterDateTo');
     return p.toString();
   }
@@ -1984,8 +2425,91 @@
     if (s && s.value.trim()) p.set('search', s.value.trim());
     var cv = document.getElementById('visitorsFilterConverted');
     if (cv && cv.value) p.set('converted', cv.value);
+    var gb = document.getElementById('visitorsFilterGroupBy');
+    if (gb && gb.value === '1') p.set('group_by_person', '1');
     appendDateRangeFromInputsOrPreset(p, 'visitors', 'visitorsFilterDateFrom', 'visitorsFilterDateTo');
     return p.toString();
+  }
+
+  function profilesFilterParams() {
+    var p = new URLSearchParams();
+    p.set('page', String(profilesPage));
+    p.set('per_page', '10');
+    var s = document.getElementById('profilesFilterSearch');
+    if (s && s.value.trim()) p.set('search', s.value.trim());
+    var lc = document.getElementById('profilesFilterLifecycle');
+    if (lc && lc.value) p.set('lifecycle_stage', lc.value);
+    appendDateRangeFromInputsOrPreset(p, 'profiles', 'profilesFilterDateFrom', 'profilesFilterDateTo');
+    return p.toString();
+  }
+
+  function loadProfiles() {
+    var msg = document.getElementById('profilesMsg');
+    var wrap = document.getElementById('profilesTableWrap');
+    var tbody = document.getElementById('profilesTbody');
+    if (!canAuth()) {
+      setMsg(msg, 'Enter admin secret and click Connect.', true);
+      if (wrap) wrap.hidden = true;
+      return;
+    }
+    setMsg(msg, 'Loading…', false);
+    fetch('/api/admin/profiles?' + profilesFilterParams(), { headers: authHeaders() })
+      .then(function (r) {
+        return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+      })
+      .then(function (res) {
+        if (!res.ok || !res.j.ok) {
+          setMsg(msg, (res.j && res.j.error) || 'Failed', true);
+          if (wrap) wrap.hidden = true;
+          return;
+        }
+        setMsg(msg, '', false);
+        var rows = res.j.profiles || [];
+        var total = res.j.total != null ? res.j.total : rows.length;
+        var perPage = res.j.perPage || 10;
+        updateProfilesStripFromRows(rows, total);
+        if (!tbody || !wrap) return;
+        tbody.innerHTML = '';
+        rows.forEach(function (row, idx) {
+          var tr = document.createElement('tr');
+          var contactBits = [];
+          if (row.canonical_name) contactBits.push('<strong>' + esc(row.canonical_name) + '</strong>');
+          if (row.canonical_email) contactBits.push(esc(row.canonical_email));
+          if (row.canonical_phone) contactBits.push(esc(row.canonical_phone));
+          var contactCell = contactBits.length ? contactBits.join('<br>') : '—';
+          var ordN = row.total_orders != null ? String(row.total_orders) : '0';
+          var ordRev = fmtMoneyPaise(row.total_revenue_paise, 'INR');
+          var ns = Array.isArray(row.merged_session_ids) ? row.merged_session_ids.length : 0;
+          var nl = Array.isArray(row.merged_lead_ids) ? row.merged_lead_ids.length : 0;
+          var nv = Array.isArray(row.merged_visitor_ids) ? row.merged_visitor_ids.length : 0;
+          var linkedSummary = nv + ' visits · ' + nl + ' leads · ' + ns + ' sessions';
+          tr.innerHTML =
+            '<td>' +
+            fmtTs(row.last_seen_at) +
+            '</td><td class="cell-clip">' +
+            contactCell +
+            '</td><td>' +
+            esc(row.lifecycle_stage || '—') +
+            '</td><td>' +
+            esc(ordN) +
+            ' · ' +
+            esc(ordRev) +
+            '</td><td class="cell-clip">' +
+            esc(linkedSummary) +
+            '</td><td><button type="button" class="btn btn--small btn--ghost" data-detail-profile="' +
+            idx +
+            '">Expand</button></td>';
+          tbody.appendChild(tr);
+          var btn = tr.querySelector('[data-detail-profile="' + idx + '"]');
+          if (btn) bindExpand(btn, 'profile', row);
+        });
+        wrap.hidden = rows.length === 0;
+        if (rows.length === 0) setMsg(msg, 'No profiles match.', false);
+        setPagination('profiles', profilesPage, perPage, total);
+      })
+      .catch(function () {
+        setMsg(msg, 'Network error', true);
+      });
   }
 
   function loadVisitors() {
@@ -2010,7 +2534,15 @@
           if (wrap) wrap.hidden = true;
           return;
         }
-        setMsg(msg, '', false);
+        var grouped = !!res.j.grouped;
+        var trunc = !!res.j.truncated;
+        var vHead = document.getElementById('visitorsTableHeadRow');
+        if (vHead) vHead.innerHTML = grouped ? VISITORS_THEAD_MERGED : VISITORS_THEAD_RAW;
+        var vHint =
+          trunc && grouped
+            ? 'Showing merged people from the first 5k matching visits — narrow filters if needed.'
+            : '';
+        setMsg(msg, vHint, false);
         var rows = res.j.visitors || [];
         var total = res.j.total != null ? res.j.total : rows.length;
         var perPage = res.j.perPage || 10;
@@ -2018,6 +2550,33 @@
         tbody.innerHTML = '';
         rows.forEach(function (row, idx) {
           var tr = document.createElement('tr');
+          if (grouped && row.rollup) {
+            var pv = row.primary_visitor || {};
+            var convG = pv.converted_lead_id
+              ? '<span class="badge badge--ok">Lead</span>'
+              : '<span class="badge">Visitor</span>';
+            var utmG = [pv.utm_source, pv.utm_medium].filter(Boolean).join(' / ') || '—';
+            tr.innerHTML =
+              '<td>' +
+              fmtTs(row.last_seen_at) +
+              '</td><td><span class="badge">' +
+              esc(String(row.visitor_count != null ? row.visitor_count : '0')) +
+              '</span></td><td class="cell-mono cell-clip">' +
+              esc((pv.session_id || '').slice(0, 14)) +
+              '</td><td class="cell-clip">' +
+              esc(pv.landing_path) +
+              '</td><td class="cell-clip">' +
+              esc(utmG) +
+              '</td><td>' +
+              convG +
+              '</td><td><button type="button" class="btn btn--small btn--ghost" data-detail-visitor-gr="' +
+              idx +
+              '">Expand</button></td>';
+            tbody.appendChild(tr);
+            var btnG = tr.querySelector('[data-detail-visitor-gr="' + idx + '"]');
+            if (btnG) bindExpand(btnG, 'visitor_group', row);
+            return;
+          }
           var conv = row.converted_lead_id
             ? '<span class="badge badge--ok">Lead</span>'
             : '<span class="badge">Visitor</span>';
@@ -2187,16 +2746,51 @@
           if (wrap) wrap.hidden = true;
           return;
         }
-        setMsg(msg, '', false);
+        var grouped = !!res.j.grouped;
+        var trunc = !!res.j.truncated;
+        var headRow = document.getElementById('leadsTableHeadRow');
+        if (headRow) headRow.innerHTML = grouped ? LEADS_THEAD_MERGED : LEADS_THEAD_RAW;
+        var hint =
+          trunc && grouped
+            ? 'Showing merged people from the first 5k matching rows — narrow filters if something is missing.'
+            : '';
+        setMsg(msg, hint, false);
         var rows = res.j.leads || [];
         var total = res.j.total != null ? res.j.total : rows.length;
         var perPage = res.j.perPage || 10;
+        updateLeadsStripFromRows(rows, total, grouped);
         if (!tbody || !wrap) return;
         tbody.innerHTML = '';
         rows.forEach(function (row, idx) {
           var tr = document.createElement('tr');
+          if (grouped && row.rollup) {
+            var pl = row.primary_lead || {};
+            var utmSm = [pl.utm_source, pl.utm_medium].filter(Boolean).join(' / ') || '—';
+            tr.innerHTML =
+              '<td>' +
+              fmtTs(row.last_seen_at) +
+              '</td><td><span class="badge">' +
+              esc(String(row.lead_count != null ? row.lead_count : '0')) +
+              '</span></td><td class="cell-clip">' +
+              esc(pl.email || '—') +
+              '</td><td class="cell-clip">' +
+              esc(pl.name || '—') +
+              '</td><td class="cell-mono cell-clip">' +
+              esc(pl.phone || '—') +
+              '</td><td>' +
+              esc(pl.lead_status || '—') +
+              '</td><td class="cell-clip">' +
+              esc(utmSm) +
+              '</td><td><button type="button" class="btn btn--small btn--ghost" data-detail-lead-roll="' +
+              idx +
+              '">Expand</button></td>';
+            tbody.appendChild(tr);
+            var btnR = tr.querySelector('[data-detail-lead-roll="' + idx + '"]');
+            if (btnR) bindExpand(btnR, 'lead_rollup', row);
+            return;
+          }
           var code = (row.id || '').slice(0, 8).toUpperCase();
-          var utmSm = [row.utm_source, row.utm_medium].filter(Boolean).join(' / ') || '—';
+          var utmSm2 = [row.utm_source, row.utm_medium].filter(Boolean).join(' / ') || '—';
           tr.innerHTML =
             '<td>' +
             fmtTs(row.last_seen_at) +
@@ -2213,7 +2807,7 @@
             '</td><td class="cell-clip">' +
             esc(row.source_page) +
             '</td><td class="cell-clip">' +
-            esc(utmSm) +
+            esc(utmSm2) +
             '</td><td class="cell-clip">' +
             esc(row.utm_campaign) +
             '</td><td class="cell-clip">' +
@@ -2282,6 +2876,8 @@
     if (st && st.value.trim()) p.set('stage', st.value.trim());
     var u = document.getElementById('abandonedFilterUtmCampaign');
     if (u && u.value.trim()) p.set('utm_campaign', u.value.trim());
+    var gb = document.getElementById('abandonedFilterGroupBy');
+    if (gb && gb.value === '1') p.set('group_by_person', '1');
     appendDateRangeFromInputsOrPreset(p, 'abandoned', 'abandonedFilterDateFrom', 'abandonedFilterDateTo');
     return p.toString();
   }
@@ -2308,14 +2904,52 @@
           if (wrap) wrap.hidden = true;
           return;
         }
-        setMsg(msg, '', false);
+        var grouped = !!res.j.grouped;
+        var trunc = !!res.j.truncated;
+        var abHead = document.getElementById('abandonedTableHeadRow');
+        if (abHead) abHead.innerHTML = grouped ? ABANDONED_THEAD_MERGED : ABANDONED_THEAD_RAW;
+        var abHint =
+          trunc && grouped
+            ? 'Showing merged people from the first 5k matching checkouts — narrow filters if needed.'
+            : '';
+        setMsg(msg, abHint, false);
         var rows = res.j.abandonedCheckouts || [];
         var total = res.j.total != null ? res.j.total : rows.length;
         var perPage = res.j.perPage || 10;
+        updateAbandonedStripFromRows(rows, total, grouped);
         if (!tbody || !wrap) return;
         tbody.innerHTML = '';
         rows.forEach(function (row, idx) {
           var tr = document.createElement('tr');
+          if (grouped && row.rollup) {
+            var pr = row.primary_checkout || {};
+            var convR = pr.converted_order_id
+              ? '<span class="badge badge--ok">Paid</span>'
+              : '<span class="badge">Dropped</span>';
+            var phoneR = pr.phone != null && pr.phone !== '' ? esc(pr.phone) : '—';
+            tr.innerHTML =
+              '<td>' +
+              fmtTs(row.last_event_at) +
+              '</td><td><span class="badge">' +
+              esc(String(row.checkout_count != null ? row.checkout_count : '0')) +
+              '</span></td><td class="cell-mono">' +
+              phoneR +
+              '</td><td class="cell-clip">' +
+              esc(pr.name || '—') +
+              '</td><td class="cell-clip">' +
+              esc(pr.email || '—') +
+              '</td><td class="cell-clip">' +
+              esc(pr.product_slug || '—') +
+              '</td><td>' +
+              convR +
+              '</td><td><button type="button" class="btn btn--small btn--ghost" data-detail-ab-roll="' +
+              idx +
+              '">Expand</button></td>';
+            tbody.appendChild(tr);
+            var btnR = tr.querySelector('[data-detail-ab-roll="' + idx + '"]');
+            if (btnR) bindExpand(btnR, 'abandoned_rollup', row);
+            return;
+          }
           var conv = row.converted_order_id
             ? '<span class="badge badge--ok">Paid</span>'
             : '<span class="badge">Dropped</span>';
@@ -2342,7 +2976,7 @@
             conv +
             '</td><td><button type="button" class="btn btn--small btn--ghost" data-detail-ab="' +
             idx +
-            '">Open</button></td>';
+            '">Expand</button></td>';
           tbody.appendChild(tr);
           var btn = tr.querySelector('[data-detail-ab="' + idx + '"]');
           if (btn) bindExpand(btn, 'abandoned', row);
@@ -2461,6 +3095,8 @@
         }
         var tiles = [
           { label: 'New visitors (period)', value: t.visitorsNew, sub: 'first_seen in window' },
+          { label: 'Profiles active', value: t.profilesActive, sub: 'merged identities in window' },
+          { label: 'Customer profiles active', value: t.customerProfilesActive, sub: 'people already converted' },
           { label: 'High intent leads (period)', value: t.intentLeadsHigh, sub: 'last_seen in window' },
           { label: 'Medium intent leads', value: t.intentLeadsMedium, sub: 'last_seen in window' },
           { label: 'Low intent leads', value: t.intentLeadsLow, sub: 'last_seen in window' },
@@ -2476,7 +3112,9 @@
           { label: 'Visitors active', value: t.visitorsActiveInPeriod, sub: 'last_seen in window' },
           { label: 'Abandon rows', value: t.abandonedCheckoutSessions, sub: 'checkout last_event in window' },
           { label: 'Abandons → paid', value: t.abandonedLaterPaid, sub: 'later got converted_order_id' },
+          { label: 'Funnel drop-offs', value: t.funnelDropOffs, sub: '10-minute timeout derived' },
           { label: 'All-time orders', value: al.orders, sub: '—' },
+          { label: 'All-time profiles', value: al.profiles, sub: 'merged people' },
           { label: 'All-time visitors', value: al.visitors, sub: '—' },
           { label: 'All-time leads', value: al.leads, sub: '—' },
           { label: 'Customers', value: al.customers, sub: '—' },
@@ -2547,26 +3185,32 @@
   function loadCurrentPanel() {
     switch (currentPanel) {
       case 'orders':
+        setAppliedFiltersText('orders', summarizeFilters('orders'));
         loadOrders();
         break;
       case 'customers':
-        loadStripToday(document.getElementById('customersPrimaryStrip'));
+        setAppliedFiltersText('customers', summarizeFilters('customers'));
         loadCustomers();
+        break;
+      case 'profiles':
+        setAppliedFiltersText('profiles', summarizeFilters('profiles'));
+        loadProfiles();
         break;
       case 'visitors':
         loadStripToday(document.getElementById('visitorsPrimaryStrip'));
         loadVisitors();
         break;
       case 'leads':
-        loadStripToday(document.getElementById('leadsPrimaryStrip'));
+        setAppliedFiltersText('leads', summarizeFilters('leads'));
         loadLeads();
         break;
       case 'analytics':
+        setAppliedFiltersText('analytics', summarizeFilters('analytics'));
         loadStripAnalyticsPanel();
         loadPageAnalytics();
         break;
       case 'abandoned':
-        loadStripToday(document.getElementById('abandonedPrimaryStrip'));
+        setAppliedFiltersText('abandoned', summarizeFilters('abandoned'));
         loadAbandoned();
         break;
       case 'dashboard':
@@ -2693,6 +3337,7 @@
           e.preventDefault();
           ordersPage = 1;
           loadOrders();
+          setAppliedFiltersText('orders', summarizeFilters('orders'));
           return;
         }
         if (bid === 'ordersFilterReset') {
@@ -2708,12 +3353,35 @@
           if (ac) ac.value = '';
           ordersPage = 1;
           loadOrders();
+          setAppliedFiltersText('orders', summarizeFilters('orders'));
           return;
         }
         if (bid === 'customersFilterApply') {
           e.preventDefault();
           customersPage = 1;
           loadCustomers();
+          setAppliedFiltersText('customers', summarizeFilters('customers'));
+          return;
+        }
+        if (bid === 'profilesFilterApply') {
+          e.preventDefault();
+          profilesPage = 1;
+          loadProfiles();
+          setAppliedFiltersText('profiles', summarizeFilters('profiles'));
+          return;
+        }
+        if (bid === 'profilesFilterReset') {
+          e.preventDefault();
+          presetDateIsoByPanel.profiles = null;
+          ['profilesFilterSearch', 'profilesFilterDateFrom', 'profilesFilterDateTo'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.value = '';
+          });
+          var plc = document.getElementById('profilesFilterLifecycle');
+          if (plc) plc.value = '';
+          profilesPage = 1;
+          loadProfiles();
+          setAppliedFiltersText('profiles', summarizeFilters('profiles'));
           return;
         }
         if (bid === 'customersFilterReset') {
@@ -2729,12 +3397,14 @@
           if (pay) pay.value = '1';
           customersPage = 1;
           loadCustomers();
+          setAppliedFiltersText('customers', summarizeFilters('customers'));
           return;
         }
         if (bid === 'leadsFilterApply') {
           e.preventDefault();
           leadsPage = 1;
           loadLeads();
+          setAppliedFiltersText('leads', summarizeFilters('leads'));
           return;
         }
         if (bid === 'leadsFilterReset') {
@@ -2761,8 +3431,11 @@
           if (lc) lc.value = '1';
           var ldf = document.getElementById('leadsFilterDateField');
           if (ldf) ldf.value = 'last_seen';
+          var lgb = document.getElementById('leadsFilterGroupBy');
+          if (lgb) lgb.value = '1';
           leadsPage = 1;
           loadLeads();
+          setAppliedFiltersText('leads', summarizeFilters('leads'));
           return;
         }
         if (bid === 'visitorsFilterApply') {
@@ -2778,6 +3451,8 @@
             var el = document.getElementById(id);
             if (el) el.value = '';
           });
+          var vgb = document.getElementById('visitorsFilterGroupBy');
+          if (vgb) vgb.value = '1';
           visitorsPage = 1;
           loadVisitors();
           return;
@@ -2786,12 +3461,14 @@
           e.preventDefault();
           loadPageAnalytics();
           if (analyticsSelectedPath) loadPageAnalyticsDetail(analyticsSelectedPath);
+          setAppliedFiltersText('analytics', summarizeFilters('analytics'));
           return;
         }
         if (bid === 'abandonedFilterApply') {
           e.preventDefault();
           abandonedPage = 1;
           loadAbandoned();
+          setAppliedFiltersText('abandoned', summarizeFilters('abandoned'));
           return;
         }
         if (bid === 'abandonedFilterReset') {
@@ -2803,8 +3480,11 @@
               if (el) el.value = '';
             }
           );
+          var agb = document.getElementById('abandonedFilterGroupBy');
+          if (agb) agb.value = '1';
           abandonedPage = 1;
           loadAbandoned();
+          setAppliedFiltersText('abandoned', summarizeFilters('abandoned'));
         }
       });
     }
@@ -2823,6 +3503,14 @@
         el.addEventListener('click', function () {
           customersPage = Math.max(1, customersPage + x[1]);
           loadCustomers();
+        });
+    });
+    [['profilesPagePrev', -1], ['profilesPageNext', 1]].forEach(function (x) {
+      var el = document.getElementById(x[0]);
+      if (el)
+        el.addEventListener('click', function () {
+          profilesPage = Math.max(1, profilesPage + x[1]);
+          loadProfiles();
         });
     });
     [['leadsPagePrev', -1], ['leadsPageNext', 1]].forEach(function (x) {

@@ -1,6 +1,7 @@
 import { supabaseRequest } from './supabase.js';
 import { razorpayFetchOrder } from './razorpay.js';
-import { strTrim, uuidOk } from './strings.js';
+import { normalizeEmail, normalizePhone, strTrim, uuidOk } from './strings.js';
+import { attachProfileToRecord, ensurePersonProfile, refreshPersonProfileStats } from './personProfiles.js';
 
 function normalizeNotes(notes) {
   return notes && typeof notes === 'object' ? notes : {};
@@ -47,6 +48,48 @@ async function ensureCustomer(cfg, name, emailLower, phone) {
     }
   }
   return null;
+}
+
+async function resolveProfileForOrder(cfg, name, emailLower, phone, leadUuid) {
+  if (leadUuid) {
+    const lr = await supabaseRequest(
+      cfg,
+      'GET',
+      `leads?id=eq.${encodeURIComponent(leadUuid)}&select=person_profile_id,first_seen_at,landing_path,source_page,referrer&limit=1`
+    );
+    if (lr.code >= 200 && lr.code < 300) {
+      const rows = JSON.parse(lr.body || '[]');
+      if (rows[0]?.person_profile_id) return String(rows[0].person_profile_id);
+      if (rows[0]) {
+        return ensurePersonProfile(cfg, {
+          name,
+          email: emailLower,
+          phone,
+          first_seen_at: rows[0].first_seen_at,
+          last_seen_at: new Date().toISOString(),
+          first_touch_path: rows[0].landing_path,
+          first_touch_source: rows[0].source_page,
+          first_touch_referrer: rows[0].referrer,
+          last_touch_path: rows[0].landing_path,
+          last_touch_source: rows[0].source_page,
+          last_touch_referrer: rows[0].referrer,
+          hasContact: true,
+          hasPaid: true,
+          lead_status: 'converted',
+        });
+      }
+    }
+  }
+  return ensurePersonProfile(cfg, {
+    name,
+    email: normalizeEmail(emailLower),
+    phone: normalizePhone(phone),
+    first_seen_at: new Date().toISOString(),
+    last_seen_at: new Date().toISOString(),
+    hasContact: true,
+    hasPaid: true,
+    lead_status: 'converted',
+  });
 }
 
 async function getOrderUuidByRazorpayId(cfg, rzId) {
@@ -180,8 +223,11 @@ export async function upsertPaidOrder(cfg, razorpayOrderId, razorpayPaymentId) {
     }
   }
 
+  const personProfileId = await resolveProfileForOrder(cfg, name, emailRaw, phone || null, leadUuid);
+
   const row = {
     customer_id: customerId,
+    person_profile_id: personProfileId,
     lead_id: leadUuid,
     abandoned_checkout_id: abandonedCheckoutId,
     product_slug: strTrim(String(notes.product ?? 'premium_kundli_report'), 128),
@@ -216,10 +262,18 @@ export async function upsertPaidOrder(cfg, razorpayOrderId, razorpayPaymentId) {
   const orderUuid = await getOrderUuidByRazorpayId(cfg, razorpayOrderId);
   if (orderUuid) {
     await linkLeadAndAbandon(cfg, orderUuid, notes);
+    if (personProfileId) await attachProfileToRecord(cfg, 'orders', orderUuid, personProfileId);
   }
 
   if (customerId && !existedBefore) {
     await bumpCustomerSpend(cfg, customerId, amountPaise);
+  }
+
+  if (personProfileId) {
+    if (customerId) await attachProfileToRecord(cfg, 'customers', customerId, personProfileId);
+    if (leadUuid) await attachProfileToRecord(cfg, 'leads', leadUuid, personProfileId);
+    if (abandonedCheckoutId) await attachProfileToRecord(cfg, 'abandoned_checkouts', abandonedCheckoutId, personProfileId);
+    await refreshPersonProfileStats(cfg, personProfileId);
   }
 
   return { ok: true };

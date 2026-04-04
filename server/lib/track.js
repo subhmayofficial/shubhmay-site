@@ -1,11 +1,18 @@
 import { supabaseRequest } from './supabase.js';
-import { strTrim, uuidOk } from './strings.js';
+import { normalizeEmail, normalizePhone, strTrim, uuidOk } from './strings.js';
 import {
   applyIntentContact,
   applyIntentFirstVisit,
   applyIntentNewPage,
   intentTierFromScore,
 } from './intentScore.js';
+import {
+  attachProfileByFilter,
+  attachProfileToRecord,
+  ensurePersonProfile,
+  patchPersonProfile,
+  refreshPersonProfileStats,
+} from './personProfiles.js';
 
 function firstTouch(newVal, existing, max) {
   const n = strTrim(newVal, max);
@@ -24,7 +31,7 @@ function preserveFirst(existing, newVal, max) {
 async function fetchLeadForMerge(cfg, leadId) {
   const u =
     `leads?id=eq.${encodeURIComponent(leadId)}` +
-    '&select=email,name,phone,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term,meta,intent_score,intent_tier&limit=1';
+    '&select=email,name,phone,first_seen_at,last_seen_at,source_page,landing_path,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term,meta,intent_score,intent_tier&limit=1';
   const r = await supabaseRequest(cfg, 'GET', u);
   if (r.code < 200 || r.code >= 300) return null;
   const rows = JSON.parse(r.body || '[]');
@@ -56,7 +63,7 @@ async function syncVisitorIntentFromLead(cfg, visitorId, score, tier) {
 async function fetchVisitorForMerge(cfg, visitorId) {
   const u =
     `visitors?id=eq.${encodeURIComponent(visitorId)}` +
-    '&select=email,name,phone,landing_path,source_page,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term&limit=1';
+    '&select=email,name,phone,first_seen_at,last_seen_at,landing_path,source_page,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term&limit=1';
   const r = await supabaseRequest(cfg, 'GET', u);
   if (r.code < 200 || r.code >= 300) return null;
   const rows = JSON.parse(r.body || '[]');
@@ -66,6 +73,93 @@ async function fetchVisitorForMerge(cfg, visitorId) {
 function isMissingVisitorsTable(body) {
   const b = String(body || '').toLowerCase();
   return b.includes('visitors') && (b.includes('does not exist') || b.includes('relation') || b.includes('schema cache'));
+}
+
+function deriveLifecycleStage({ hasContact = false, hasCheckoutContact = false, hasPaid = false } = {}) {
+  if (hasPaid) return 'customer';
+  if (hasCheckoutContact) return 'checkout_contact';
+  if (hasContact) return 'lead';
+  return 'visitor';
+}
+
+async function resolveOrCreateProfileId(cfg, seed = {}) {
+  const profileId = await ensurePersonProfile(cfg, seed);
+  if (!profileId) return null;
+  await patchPersonProfile(cfg, profileId, {
+    canonical_name: strTrim(seed.name, 500),
+    canonical_email: normalizeEmail(seed.email),
+    canonical_phone: normalizePhone(seed.phone),
+    last_seen_at: seed.last_seen_at || new Date().toISOString(),
+    last_touch_path: strTrim(seed.last_touch_path, 1000),
+    last_touch_source: strTrim(seed.last_touch_source, 500),
+    last_touch_referrer: strTrim(seed.last_touch_referrer, 2000),
+    lifecycle_stage: deriveLifecycleStage(seed),
+    lead_status: strTrim(seed.lead_status, 64) || (seed.hasContact ? 'new' : 'anonymous'),
+  });
+  return profileId;
+}
+
+async function backfillProfileLinks(cfg, profileId, ids = {}) {
+  if (!profileId) return;
+  const tasks = [];
+  if (ids.visitorId) tasks.push(attachProfileToRecord(cfg, 'visitors', ids.visitorId, profileId));
+  if (ids.leadId) tasks.push(attachProfileToRecord(cfg, 'leads', ids.leadId, profileId));
+  if (ids.visitorId) {
+    tasks.push(
+      attachProfileByFilter(
+        cfg,
+        'visitor_events',
+        `visitor_id=eq.${encodeURIComponent(String(ids.visitorId))}`,
+        profileId
+      )
+    );
+  }
+  if (ids.leadId) {
+    tasks.push(
+      attachProfileByFilter(
+        cfg,
+        'lead_events',
+        `lead_id=eq.${encodeURIComponent(String(ids.leadId))}`,
+        profileId
+      )
+    );
+    tasks.push(
+      attachProfileByFilter(
+        cfg,
+        'abandoned_checkouts',
+        `lead_id=eq.${encodeURIComponent(String(ids.leadId))}`,
+        profileId
+      )
+    );
+  }
+  if (ids.sessionId) {
+    tasks.push(
+      attachProfileByFilter(
+        cfg,
+        'visitors',
+        `session_id=eq.${encodeURIComponent(String(ids.sessionId))}`,
+        profileId
+      )
+    );
+    tasks.push(
+      attachProfileByFilter(
+        cfg,
+        'leads',
+        `session_id=eq.${encodeURIComponent(String(ids.sessionId))}`,
+        profileId
+      )
+    );
+  }
+  await Promise.all(tasks);
+  await refreshPersonProfileStats(cfg, profileId);
+}
+
+function funnelMeta(meta, fallback = {}) {
+  const out = meta && typeof meta === 'object' ? { ...meta } : {};
+  if (!out.funnel && fallback.funnel) out.funnel = fallback.funnel;
+  if (!out.step_name && fallback.step_name) out.step_name = fallback.step_name;
+  if (out.step_index == null && fallback.step_index != null) out.step_index = fallback.step_index;
+  return out;
 }
 
 export async function handleTrackLead(cfg, body) {
@@ -87,7 +181,7 @@ export async function handleTrackLead(cfg, body) {
   const conversionForm = strTrim(body.conversion_form ?? body.form_id, 200);
   const conversionGoal = strTrim(body.goal, 200);
 
-  const vfind = `visitors?select=id,converted_lead_id&session_id=eq.${encodeURIComponent(sessionId)}&limit=1`;
+  const vfind = `visitors?select=id,converted_lead_id,person_profile_id&session_id=eq.${encodeURIComponent(sessionId)}&limit=1`;
   const vrf = await supabaseRequest(cfg, 'GET', vfind);
   if ((vrf.code < 200 || vrf.code >= 300) && isMissingVisitorsTable(vrf.body)) {
     return {
@@ -102,12 +196,14 @@ export async function handleTrackLead(cfg, body) {
 
   let visitorId = null;
   let visitorConvertedLeadId = null;
+  let visitorProfileId = null;
   let isNewVisitor = false;
   if (vrf.code >= 200 && vrf.code < 300) {
     const rows = JSON.parse(vrf.body || '[]');
     if (rows[0]?.id) {
       visitorId = String(rows[0].id);
       visitorConvertedLeadId = rows[0].converted_lead_id ? String(rows[0].converted_lead_id) : null;
+      visitorProfileId = rows[0].person_profile_id ? String(rows[0].person_profile_id) : null;
     }
   }
 
@@ -150,6 +246,25 @@ export async function handleTrackLead(cfg, body) {
     last_seen_at: now,
   };
 
+  const profileIdSeed =
+    visitorProfileId || hasContact
+      ? await resolveOrCreateProfileId(cfg, {
+          name: nameNew || existingVisitor?.name,
+          email: emailNew || existingVisitor?.email,
+          phone: phoneNew || existingVisitor?.phone,
+          first_seen_at: existingVisitor?.first_seen_at || now,
+          last_seen_at: now,
+          first_touch_path: currentLanding,
+          first_touch_source: currentSource,
+          first_touch_referrer: body.referrer,
+          last_touch_path: currentLanding,
+          last_touch_source: currentSource,
+          last_touch_referrer: body.referrer,
+          hasContact,
+        })
+      : null;
+  if (profileIdSeed) vpatch.person_profile_id = profileIdSeed;
+
   if (visitorId) {
     const patchJson = JSON.stringify(vpatch);
     const pu = await supabaseRequest(cfg, 'PATCH', `visitors?id=eq.${encodeURIComponent(visitorId)}`, patchJson, 'return=minimal');
@@ -185,19 +300,22 @@ export async function handleTrackLead(cfg, body) {
       if (rows[0]?.id) {
         visitorId = String(rows[0].id);
         visitorConvertedLeadId = rows[0].converted_lead_id ? String(rows[0].converted_lead_id) : null;
+        visitorProfileId = rows[0].person_profile_id ? String(rows[0].person_profile_id) : profileIdSeed;
       }
     }
   }
 
-  const findLead = `leads?select=id,visitor_id&session_id=eq.${encodeURIComponent(sessionId)}&limit=1`;
+  const findLead = `leads?select=id,visitor_id,person_profile_id&session_id=eq.${encodeURIComponent(sessionId)}&limit=1`;
   const lfr = await supabaseRequest(cfg, 'GET', findLead);
   let leadId = null;
   let leadVisitorId = null;
+  let leadProfileId = null;
   if (lfr.code >= 200 && lfr.code < 300) {
     const rows = JSON.parse(lfr.body || '[]');
     if (rows[0]?.id) {
       leadId = String(rows[0].id);
       leadVisitorId = rows[0].visitor_id ? String(rows[0].visitor_id) : null;
+      leadProfileId = rows[0].person_profile_id ? String(rows[0].person_profile_id) : null;
     }
   }
 
@@ -214,7 +332,7 @@ export async function handleTrackLead(cfg, body) {
       cfg,
       'PATCH',
       `leads?id=eq.${encodeURIComponent(leadId)}`,
-      JSON.stringify({ visitor_id: visitorId }),
+      JSON.stringify({ visitor_id: visitorId, person_profile_id: leadProfileId || visitorProfileId || null }),
       'return=minimal'
     );
   }
@@ -223,6 +341,7 @@ export async function handleTrackLead(cfg, body) {
     const anonInsert = {
       session_id: sessionId,
       visitor_id: visitorId,
+      person_profile_id: visitorProfileId,
       source_page: strTrim(body.source_page, 500),
       landing_path: strTrim(body.landing_path, 1000),
       referrer: firstTouch(body.referrer, null, 2000),
@@ -258,6 +377,7 @@ export async function handleTrackLead(cfg, body) {
       if (rows[0]?.id) {
         leadId = String(rows[0].id);
         leadVisitorId = rows[0].visitor_id ? String(rows[0].visitor_id) : null;
+        leadProfileId = rows[0].person_profile_id ? String(rows[0].person_profile_id) : visitorProfileId;
       }
     }
     existingLead = leadId ? await fetchLeadForMerge(cfg, leadId) : null;
@@ -271,6 +391,38 @@ export async function handleTrackLead(cfg, body) {
         await patchLeadIntent(cfg, leadId, applied.score, applied.meta);
         await syncVisitorIntentFromLead(cfg, visitorId, applied.score, intentTierFromScore(applied.score));
       }
+    }
+  }
+
+  const shouldMaintainProfile = hasContact || Boolean(leadProfileId || visitorProfileId);
+  const personProfileId = shouldMaintainProfile
+    ? await resolveOrCreateProfileId(cfg, {
+        name: nameNew || existingLead?.name || existingVisitor?.name,
+        email: emailNew || existingLead?.email || existingVisitor?.email,
+        phone: phoneNew || existingLead?.phone || existingVisitor?.phone,
+        first_seen_at: existingLead?.first_seen_at || existingVisitor?.first_seen_at || now,
+        last_seen_at: now,
+        first_touch_path: existingVisitor?.landing_path || currentLanding,
+        first_touch_source: existingVisitor?.source_page || currentSource,
+        first_touch_referrer: existingVisitor?.referrer || body.referrer,
+        last_touch_path: currentLanding,
+        last_touch_source: currentSource,
+        last_touch_referrer: body.referrer,
+        hasContact,
+        lead_status: hasContact ? 'new' : 'anonymous',
+      })
+    : null;
+  if (personProfileId) {
+    visitorProfileId = personProfileId;
+    leadProfileId = personProfileId;
+    if (visitorId) {
+      await supabaseRequest(
+        cfg,
+        'PATCH',
+        `visitors?id=eq.${encodeURIComponent(visitorId)}`,
+        JSON.stringify({ person_profile_id: personProfileId, updated_at: now }),
+        'return=minimal'
+      );
     }
   }
 
@@ -305,6 +457,7 @@ export async function handleTrackLead(cfg, body) {
           : null,
       last_seen_at: now,
       visitor_id: visitorId,
+      person_profile_id: leadProfileId || visitorProfileId || null,
     };
 
     if (leadId) {
@@ -318,7 +471,12 @@ export async function handleTrackLead(cfg, body) {
       const fr2 = await supabaseRequest(cfg, 'GET', findLead);
       if (fr2.code >= 200 && fr2.code < 300) {
         const rows = JSON.parse(fr2.body || '[]');
-        if (rows[0]?.id) leadId = String(rows[0].id);
+        if (rows[0]?.id) {
+          leadId = String(rows[0].id);
+          leadProfileId = rows[0].person_profile_id
+            ? String(rows[0].person_profile_id)
+            : leadPatch.person_profile_id || visitorProfileId;
+        }
       }
     }
 
@@ -394,6 +552,7 @@ export async function handleTrackLead(cfg, body) {
       'visitor_events',
       JSON.stringify({
         visitor_id: visitorId,
+        person_profile_id: personProfileId,
         session_id: sessionId,
         event_type: 'journey',
         event_name: hasContact ? 'contact_shared' : 'session_touch',
@@ -438,6 +597,7 @@ export async function handleTrackLead(cfg, body) {
       'lead_events',
       JSON.stringify({
         lead_id: leadId,
+        person_profile_id: personProfileId,
         session_id: sessionId,
         event_type: 'lead',
         event_name: 'lead_upsert',
@@ -466,12 +626,17 @@ export async function handleTrackLead(cfg, body) {
     }
   }
 
+  if (personProfileId) {
+    await backfillProfileLinks(cfg, personProfileId, { visitorId, leadId, sessionId });
+  }
+
   return {
     status: 200,
     json: {
       ok: true,
       leadId: leadId || null,
       visitorId: visitorId || null,
+      personProfileId: personProfileId || null,
       convertedToLead: Boolean(hasContact && leadId),
       intentScore: outIntentScore,
       intentTier: outIntentTier,
@@ -488,27 +653,39 @@ export async function handleTrackLeadEvent(cfg, body) {
     return { status: 400, json: { ok: false, error: 'session_id required' } };
   }
 
-  const vfind = `visitors?select=id&session_id=eq.${encodeURIComponent(sessionId)}&limit=1`;
+  const vfind = `visitors?select=id,person_profile_id&session_id=eq.${encodeURIComponent(sessionId)}&limit=1`;
   const vrf = await supabaseRequest(cfg, 'GET', vfind);
   let visitorId = null;
+  let personProfileId = null;
   if (vrf.code >= 200 && vrf.code < 300) {
     const rows = JSON.parse(vrf.body || '[]');
-    if (rows[0]?.id) visitorId = String(rows[0].id);
+    if (rows[0]?.id) {
+      visitorId = String(rows[0].id);
+      personProfileId = rows[0].person_profile_id ? String(rows[0].person_profile_id) : null;
+    }
   }
 
-  const find = `leads?select=id&session_id=eq.${encodeURIComponent(sessionId)}&limit=1`;
+  const find = `leads?select=id,person_profile_id&session_id=eq.${encodeURIComponent(sessionId)}&limit=1`;
   const fr = await supabaseRequest(cfg, 'GET', find);
   let leadId = null;
   if (fr.code >= 200 && fr.code < 300) {
     const rows = JSON.parse(fr.body || '[]');
-    if (rows[0]?.id) leadId = String(rows[0].id);
+    if (rows[0]?.id) {
+      leadId = String(rows[0].id);
+      if (!personProfileId && rows[0].person_profile_id) personProfileId = String(rows[0].person_profile_id);
+    }
   }
 
-  const meta = body.meta && typeof body.meta === 'object' ? body.meta : {};
+  const meta = funnelMeta(body.meta, {
+    funnel: body.funnel,
+    step_name: body.step_name || body.stage,
+    step_index: body.step_index,
+  });
   const occurredAt = new Date().toISOString();
 
   const row = {
     lead_id: leadId,
+    person_profile_id: personProfileId,
     session_id: sessionId,
     event_type: strTrim(body.event_type, 64) || 'activity',
     event_name: strTrim(body.event_name, 128) || 'event',
@@ -529,6 +706,7 @@ export async function handleTrackLeadEvent(cfg, body) {
   if (visitorId && !leadId) {
     const veRow = {
       visitor_id: visitorId,
+      person_profile_id: personProfileId,
       session_id: sessionId,
       event_type: row.event_type,
       event_name: row.event_name,
@@ -568,6 +746,10 @@ export async function handleTrackLeadEvent(cfg, body) {
     }
   }
 
+  if (personProfileId) {
+    await backfillProfileLinks(cfg, personProfileId, { visitorId, leadId, sessionId });
+  }
+
   let intentScore = null;
   let intentTier = null;
   if (leadId) {
@@ -578,7 +760,7 @@ export async function handleTrackLeadEvent(cfg, body) {
     }
   }
 
-  return { status: 200, json: { ok: true, intentScore, intentTier } };
+  return { status: 200, json: { ok: true, personProfileId, intentScore, intentTier } };
 }
 
 export async function handleTrackCheckoutEvent(cfg, body) {
@@ -593,12 +775,16 @@ export async function handleTrackCheckoutEvent(cfg, body) {
   const now = new Date().toISOString();
   const stage = strTrim(body.stage, 64) || 'page_view';
 
-  const find = `abandoned_checkouts?select=id&checkout_session_id=eq.${encodeURIComponent(checkoutSessionId)}&limit=1`;
+  const find = `abandoned_checkouts?select=id,person_profile_id&checkout_session_id=eq.${encodeURIComponent(checkoutSessionId)}&limit=1`;
   const fr = await supabaseRequest(cfg, 'GET', find);
   let rowId = null;
+  let personProfileId = null;
   if (fr.code >= 200 && fr.code < 300) {
     const rows = JSON.parse(fr.body || '[]');
-    if (rows[0]?.id) rowId = String(rows[0].id);
+    if (rows[0]?.id) {
+      rowId = String(rows[0].id);
+      personProfileId = rows[0].person_profile_id ? String(rows[0].person_profile_id) : null;
+    }
   }
 
   const rawLead = String(body.lead_id ?? '').trim();
@@ -608,21 +794,29 @@ export async function handleTrackCheckoutEvent(cfg, body) {
   let leadSessionForEvent = rawVs || null;
   let visitorIdForCheckout = null;
   if (rawVs) {
-    const vf = await supabaseRequest(cfg, 'GET', `visitors?select=id&session_id=eq.${encodeURIComponent(rawVs)}&limit=1`);
+    const vf = await supabaseRequest(
+      cfg,
+      'GET',
+      `visitors?select=id,person_profile_id&session_id=eq.${encodeURIComponent(rawVs)}&limit=1`
+    );
     if (vf.code >= 200 && vf.code < 300) {
       const rows = JSON.parse(vf.body || '[]');
-      if (rows[0]?.id) visitorIdForCheckout = String(rows[0].id);
+      if (rows[0]?.id) {
+        visitorIdForCheckout = String(rows[0].id);
+        if (!personProfileId && rows[0].person_profile_id) personProfileId = String(rows[0].person_profile_id);
+      }
     }
   }
   if (!leadSessionForEvent && leadUuid) {
     const lr = await supabaseRequest(
       cfg,
       'GET',
-      `leads?id=eq.${encodeURIComponent(leadUuid)}&select=session_id&limit=1`
+      `leads?id=eq.${encodeURIComponent(leadUuid)}&select=session_id,person_profile_id&limit=1`
     );
     if (lr.code >= 200 && lr.code < 300) {
       const rows = JSON.parse(lr.body || '[]');
       if (rows[0]?.session_id) leadSessionForEvent = String(rows[0].session_id);
+      if (!personProfileId && rows[0]?.person_profile_id) personProfileId = String(rows[0].person_profile_id);
     }
   }
 
@@ -649,6 +843,27 @@ export async function handleTrackCheckoutEvent(cfg, body) {
   };
   if (leadUuid) patch.lead_id = leadUuid;
 
+  const hasCheckoutContact = Boolean(patch.email || patch.phone);
+  if (!personProfileId && hasCheckoutContact) {
+    personProfileId = await resolveOrCreateProfileId(cfg, {
+      name: patch.name,
+      email: patch.email,
+      phone: patch.phone,
+      first_seen_at: now,
+      last_seen_at: now,
+      first_touch_path: patch.landing_path,
+      first_touch_source: body.source_page || 'checkout',
+      first_touch_referrer: patch.referrer,
+      last_touch_path: patch.landing_path,
+      last_touch_source: body.source_page || 'checkout',
+      last_touch_referrer: patch.referrer,
+      hasContact: hasCheckoutContact,
+      hasCheckoutContact: true,
+      lead_status: 'checkout_started',
+    });
+  }
+  if (personProfileId) patch.person_profile_id = personProfileId;
+
   if (stage === 'dismissed' || stage === 'payment_dismissed') {
     patch.abandoned_at = now;
   }
@@ -663,7 +878,7 @@ export async function handleTrackCheckoutEvent(cfg, body) {
     );
   }
 
-  if (!rowId) {
+  if (!rowId && hasCheckoutContact) {
     const insert = { ...patch, checkout_session_id: checkoutSessionId };
     const ins = await supabaseRequest(cfg, 'POST', 'abandoned_checkouts', JSON.stringify(insert), 'return=minimal');
     if (ins.code < 200 || ins.code >= 300) {
@@ -683,6 +898,7 @@ export async function handleTrackCheckoutEvent(cfg, body) {
       'visitor_events',
       JSON.stringify({
         visitor_id: visitorIdForCheckout,
+        person_profile_id: personProfileId,
         session_id: rawVs,
         event_type: 'checkout',
         event_name: stage,
@@ -716,6 +932,7 @@ export async function handleTrackCheckoutEvent(cfg, body) {
       'lead_events',
       JSON.stringify({
         lead_id: leadUuid,
+        person_profile_id: personProfileId,
         session_id: leadSessionForEvent,
         event_type: 'checkout',
         event_name: stage,
@@ -735,5 +952,14 @@ export async function handleTrackCheckoutEvent(cfg, body) {
     );
   }
 
-  return { status: 200, json: { ok: true, id: rowId } };
+  if (personProfileId) {
+    await backfillProfileLinks(cfg, personProfileId, {
+      visitorId: visitorIdForCheckout,
+      leadId: leadUuid,
+      sessionId: rawVs || leadSessionForEvent,
+    });
+    if (rowId) await attachProfileToRecord(cfg, 'abandoned_checkouts', rowId, personProfileId);
+  }
+
+  return { status: 200, json: { ok: true, id: rowId, personProfileId } };
 }
