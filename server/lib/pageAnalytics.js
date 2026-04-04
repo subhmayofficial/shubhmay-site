@@ -52,6 +52,54 @@ function normalizePath(p) {
   }
 }
 
+function stripTrailingSlash(p) {
+  if (!p || p === '/') return p;
+  return p.replace(/\/$/, '') || '/';
+}
+
+/**
+ * Map alternate URLs to one row (matches how GA4 groups "same" page: /x vs /x.html).
+ */
+const PATH_ALIAS_TO_CANONICAL = new Map([
+  ['/free-metal-finder-tool', '/free-metal-finder-tool.html'],
+  ['/metal-finder', '/free-metal-finder-tool.html'],
+  ['/tools/metal', '/free-metal-finder-tool.html'],
+  ['/kundli', '/kundli.html'],
+  ['/kundli-preview', '/kundli-preview.html'],
+  ['/consultancy', '/consultancy.html'],
+  ['/contact', '/contact-us.html'],
+  ['/tracking', '/tracking.html'],
+  ['/lp/kundli', '/lp/kundli.html'],
+]);
+
+export function canonicalPathForAnalytics(pathNorm) {
+  if (!pathNorm || pathNorm === '(unknown)') return pathNorm;
+  const p = stripTrailingSlash(pathNorm);
+  const pl = p.toLowerCase();
+  if (PATH_ALIAS_TO_CANONICAL.has(p)) return PATH_ALIAS_TO_CANONICAL.get(p);
+  if (PATH_ALIAS_TO_CANONICAL.has(pl)) return PATH_ALIAS_TO_CANONICAL.get(pl);
+  for (const [alias, canon] of PATH_ALIAS_TO_CANONICAL) {
+    if (p === canon || pl === canon.toLowerCase()) return canon;
+    if (p === alias || pl === alias.toLowerCase()) return canon;
+  }
+  return pathNorm;
+}
+
+/** Paths to match in DB when user opens detail for one canonical URL. */
+export function pathVariantsForDetail(canonicalPath) {
+  const out = new Set([canonicalPath]);
+  for (const [alias, canon] of PATH_ALIAS_TO_CANONICAL) {
+    if (canon === canonicalPath || alias === canonicalPath) {
+      out.add(alias);
+      out.add(canon);
+    }
+  }
+  return [...out];
+}
+
+const PAGE_VIEW_FILTER = 'event_name.eq.page_view';
+const PAGE_ROWS_CAP = 15000;
+
 export async function adminPageAnalytics(cfg, q) {
   if (!cfg.supabaseUrl || !cfg.serviceRoleKey) {
     return { ok: false, error: 'Supabase not configured' };
@@ -59,10 +107,11 @@ export async function adminPageAnalytics(cfg, q) {
   const w = resolveAnalyticsWindow(q);
   const startIso = w.startIso;
   const endIso = w.endIso;
+  const pathPrefixFilter = strTrim(q.path_prefix, 500);
 
-  const andRange = `and=(created_at.gte.${encodeURIComponent(startIso)},created_at.lt.${encodeURIComponent(endIso)})`;
-  const vePath = `visitor_events?select=path,session_id,created_at,event_type&${andRange}&limit=10000`;
-  const lePath = `lead_events?select=path,session_id,created_at,event_type&${andRange}&limit=10000`;
+  const andRange = `and=(created_at.gte.${encodeURIComponent(startIso)},created_at.lt.${encodeURIComponent(endIso)},${PAGE_VIEW_FILTER})`;
+  const vePath = `visitor_events?select=path,session_id,created_at,event_name&${andRange}&limit=${PAGE_ROWS_CAP}`;
+  const lePath = `lead_events?select=path,session_id,created_at,event_name&${andRange}&limit=${PAGE_ROWS_CAP}`;
 
   const ve = await supabaseRequest(cfg, 'GET', vePath);
   const le = await supabaseRequest(cfg, 'GET', lePath);
@@ -71,7 +120,9 @@ export async function adminPageAnalytics(cfg, q) {
   const map = new Map();
 
   function addRow(pathRaw, sessionId, createdAt) {
-    const path = normalizePath(pathRaw) || '(unknown)';
+    const raw = normalizePath(pathRaw) || '(unknown)';
+    const path = canonicalPathForAnalytics(raw);
+    if (pathPrefixFilter && !String(path).startsWith(pathPrefixFilter)) return;
     const day = dayKeyIst(createdAt);
     const key = path;
     if (!map.has(key)) {
@@ -93,7 +144,7 @@ export async function adminPageAnalytics(cfg, q) {
     const rows = JSON.parse(ve.body || '[]');
     if (Array.isArray(rows)) {
       for (const r of rows) {
-        if (r.path) addRow(r.path, r.session_id, r.created_at);
+        if (r.path && String(r.event_name || '').trim() === 'page_view') addRow(r.path, r.session_id, r.created_at);
       }
     }
   }
@@ -101,7 +152,7 @@ export async function adminPageAnalytics(cfg, q) {
     const rows = JSON.parse(le.body || '[]');
     if (Array.isArray(rows)) {
       for (const r of rows) {
-        if (r.path) addRow(r.path, r.session_id, r.created_at);
+        if (r.path && String(r.event_name || '').trim() === 'page_view') addRow(r.path, r.session_id, r.created_at);
       }
     }
   }
@@ -121,7 +172,15 @@ export async function adminPageAnalytics(cfg, q) {
 
   byPath.sort((a, b) => b.events - a.events);
 
-  const truncated = (ve.code >= 200 && ve.body?.length > 100000) || (le.code >= 200 && le.body?.length > 100000);
+  let truncated = false;
+  if (ve.code >= 200 && ve.code < 300) {
+    const rows = JSON.parse(ve.body || '[]');
+    if (Array.isArray(rows) && rows.length >= PAGE_ROWS_CAP) truncated = true;
+  }
+  if (le.code >= 200 && le.code < 300) {
+    const rows = JSON.parse(le.body || '[]');
+    if (Array.isArray(rows) && rows.length >= PAGE_ROWS_CAP) truncated = true;
+  }
 
   return {
     ok: true,
@@ -131,7 +190,9 @@ export async function adminPageAnalytics(cfg, q) {
     timezone: ADMIN_TZ,
     pages: byPath,
     totalEvents: byPath.reduce((s, x) => s + x.events, 0),
-    truncated: Boolean(truncated),
+    truncated,
+    metric: 'page_view',
+    metricNote: 'Views = page_view events only (aligned with GA4 “Views”), not every tracked event.',
   };
 }
 
@@ -141,17 +202,12 @@ export async function adminPageAnalyticsDetail(cfg, q) {
   }
   const rawPath = strTrim(q.path, 2000);
   if (!rawPath) return { ok: false, error: 'path query required' };
-  const normalized = normalizePath(rawPath) || rawPath;
+  const normalized = canonicalPathForAnalytics(normalizePath(rawPath) || rawPath);
+  const variants = pathVariantsForDetail(normalized);
   const w = resolveAnalyticsWindow(q);
   const startIso = w.startIso;
   const endIso = w.endIso;
-  const andRange = `and=(created_at.gte.${encodeURIComponent(startIso)},created_at.lt.${encodeURIComponent(endIso)})`;
-
-  const vePath = `visitor_events?select=path,session_id,created_at,event_type,event_name,meta&${andRange}&path=eq.${encodeURIComponent(normalized)}&limit=5000`;
-  const lePath = `lead_events?select=path,session_id,created_at,event_type,event_name,meta&${andRange}&path=eq.${encodeURIComponent(normalized)}&limit=5000`;
-
-  const ve = await supabaseRequest(cfg, 'GET', vePath);
-  const le = await supabaseRequest(cfg, 'GET', lePath);
+  const andRange = `and=(created_at.gte.${encodeURIComponent(startIso)},created_at.lt.${encodeURIComponent(endIso)},${PAGE_VIEW_FILTER})`;
 
   const byDay = new Map();
   const sessions = new Set();
@@ -160,6 +216,7 @@ export async function adminPageAnalyticsDetail(cfg, q) {
   function ingest(rows) {
     if (!Array.isArray(rows)) return;
     for (const r of rows) {
+      if (String(r.event_name || '').trim() !== 'page_view') continue;
       total += 1;
       if (r.session_id) sessions.add(r.session_id);
       const d = dayKeyIst(r.created_at);
@@ -167,8 +224,15 @@ export async function adminPageAnalyticsDetail(cfg, q) {
     }
   }
 
-  if (ve.code >= 200 && ve.code < 300) ingest(JSON.parse(ve.body || '[]'));
-  if (le.code >= 200 && le.code < 300) ingest(JSON.parse(le.body || '[]'));
+  for (const pv of variants) {
+    const peq = `path=eq.${encodeURIComponent(pv)}`;
+    const vePath = `visitor_events?select=path,session_id,created_at,event_name&${andRange}&${peq}&limit=5000`;
+    const lePath = `lead_events?select=path,session_id,created_at,event_name&${andRange}&${peq}&limit=5000`;
+    const ve = await supabaseRequest(cfg, 'GET', vePath);
+    const le = await supabaseRequest(cfg, 'GET', lePath);
+    if (ve.code >= 200 && ve.code < 300) ingest(JSON.parse(ve.body || '[]'));
+    if (le.code >= 200 && le.code < 300) ingest(JSON.parse(le.body || '[]'));
+  }
 
   const byDayArr = [...byDay.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
@@ -183,5 +247,58 @@ export async function adminPageAnalyticsDetail(cfg, q) {
     totalEvents: total,
     uniqueSessions: sessions.size,
     byDay: byDayArr,
+    metric: 'page_view',
+    pathVariants: variants,
+  };
+}
+
+const SERIES_ROW_CAP = 15000;
+
+/**
+ * Daily page_view counts (visitor_events + lead_events), IST buckets.
+ * For dashboard / traffic charts; respects path_prefix like adminPageAnalytics.
+ */
+export async function adminTrafficDailySeries(cfg, q) {
+  if (!cfg.supabaseUrl || !cfg.serviceRoleKey) {
+    return { ok: false, error: 'Supabase not configured' };
+  }
+  const w = resolveAnalyticsWindow(q);
+  const startIso = w.startIso;
+  const endIso = w.endIso;
+  const pathPrefixFilter = strTrim(q.path_prefix, 500);
+  const andRange = `and=(created_at.gte.${encodeURIComponent(startIso)},created_at.lt.${encodeURIComponent(endIso)},event_name.eq.page_view)`;
+
+  const byDay = new Map();
+  let truncated = false;
+
+  for (const table of ['visitor_events', 'lead_events']) {
+    const url = `${table}?select=path,created_at&${andRange}&limit=${SERIES_ROW_CAP}&order=created_at.asc`;
+    const res = await supabaseRequest(cfg, 'GET', url);
+    if (res.code < 200 || res.code >= 300) continue;
+    const rows = JSON.parse(res.body || '[]');
+    if (!Array.isArray(rows)) continue;
+    if (rows.length >= SERIES_ROW_CAP) truncated = true;
+    for (const r of rows) {
+      const raw = normalizePath(r.path) || '(unknown)';
+      const path = canonicalPathForAnalytics(raw);
+      if (pathPrefixFilter && !String(path).startsWith(pathPrefixFilter)) continue;
+      const d = dayKeyIst(r.created_at);
+      byDay.set(d, (byDay.get(d) || 0) + 1);
+    }
+  }
+
+  const series = [...byDay.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, pageViews]) => ({ date, pageViews }));
+
+  return {
+    ok: true,
+    preset: w.label,
+    periodStart: startIso,
+    periodEnd: endIso,
+    timezone: ADMIN_TZ,
+    series,
+    truncated,
+    metric: 'page_view',
   };
 }

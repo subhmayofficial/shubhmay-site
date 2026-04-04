@@ -886,6 +886,35 @@ export async function adminOrderPrePurchaseTimeline(cfg, orderId) {
   return out;
 }
 
+/** Union of session_id across visitor_events + lead_events for page_view in range (paginated; may truncate). */
+async function distinctSessionsFromPageViews(cfg, startIso, endIso, maxPerTable = 15000) {
+  const pvWin = `and=(created_at.gte.${encodeURIComponent(startIso)},created_at.lt.${encodeURIComponent(endIso)},event_name.eq.page_view)`;
+  const set = new Set();
+  let truncated = false;
+  for (const table of ['visitor_events', 'lead_events']) {
+    let offset = 0;
+    const limit = 2000;
+    while (offset < maxPerTable) {
+      const url = `${table}?select=session_id&${pvWin}&order=created_at.asc&limit=${limit}&offset=${offset}`;
+      const r = await supabaseRequest(cfg, 'GET', url);
+      if (r.code < 200 || r.code >= 300) break;
+      const rows = JSON.parse(r.body || '[]');
+      if (!Array.isArray(rows) || rows.length === 0) break;
+      for (const row of rows) {
+        const sid = String(row.session_id || '').trim();
+        if (sid) set.add(sid);
+      }
+      if (rows.length < limit) break;
+      offset += limit;
+      if (offset >= maxPerTable) {
+        truncated = true;
+        break;
+      }
+    }
+  }
+  return { count: set.size, truncated };
+}
+
 export async function adminGetAnalytics(cfg, q) {
   if (!cfg.supabaseUrl || !cfg.serviceRoleKey) {
     return { ok: false, error: 'Supabase not configured' };
@@ -935,8 +964,11 @@ export async function adminGetAnalytics(cfg, q) {
   const intentMedium = await supabaseCountRows(cfg, `leads?select=id&${lsWin}&intent_tier=eq.medium`);
   const intentLow = await supabaseCountRows(cfg, `leads?select=id&${lsWin}&intent_tier=eq.low`);
 
-  const pageViewsQ = `lead_events?select=id&and=(created_at.gte.${encodeURIComponent(startIso)},created_at.lt.${encodeURIComponent(endIso)},event_name.eq.page_view)`;
-  const pageViewsTotal = await supabaseCountRows(cfg, pageViewsQ);
+  const pvWin = `and=(created_at.gte.${encodeURIComponent(startIso)},created_at.lt.${encodeURIComponent(endIso)},event_name.eq.page_view)`;
+  const pageViewsLead = await supabaseCountRows(cfg, `lead_events?select=id&${pvWin}`);
+  const pageViewsVisitor = await supabaseCountRows(cfg, `visitor_events?select=id&${pvWin}`);
+  const pageViewsTotal = pageViewsLead + pageViewsVisitor;
+  const uniquePv = await distinctSessionsFromPageViews(cfg, startIso, endIso);
 
   const visitorsActiveQ = `visitors?select=id&and=(last_seen_at.gte.${encodeURIComponent(startIso)},last_seen_at.lt.${encodeURIComponent(endIso)})`;
   const visitorsActiveInPeriod = await supabaseCountRows(cfg, visitorsActiveQ);
@@ -986,6 +1018,10 @@ export async function adminGetAnalytics(cfg, q) {
     visitorsNew,
     visitorsActiveInPeriod,
     pageViewsTotal,
+    pageViewsLeadEvents: pageViewsLead,
+    pageViewsVisitorEvents: pageViewsVisitor,
+    uniqueSessionsPageViews: uniquePv.count,
+    uniqueSessionsPageViewsTruncated: uniquePv.truncated,
     abandonedCheckoutSessions,
     abandonedLaterPaid: abandonedConvertedLater,
     profilesActive,

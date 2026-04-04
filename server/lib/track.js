@@ -63,7 +63,7 @@ async function syncVisitorIntentFromLead(cfg, visitorId, score, tier) {
 async function fetchVisitorForMerge(cfg, visitorId) {
   const u =
     `visitors?id=eq.${encodeURIComponent(visitorId)}` +
-    '&select=email,name,phone,first_seen_at,last_seen_at,landing_path,source_page,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term&limit=1';
+    '&select=email,name,phone,first_seen_at,last_seen_at,landing_path,source_page,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term,meta&limit=1';
   const r = await supabaseRequest(cfg, 'GET', u);
   if (r.code < 200 || r.code >= 300) return null;
   const rows = JSON.parse(r.body || '[]');
@@ -245,6 +245,14 @@ export async function handleTrackLead(cfg, body) {
         : null,
     last_seen_at: now,
   };
+
+  const prevMeta =
+    existingVisitor?.meta && typeof existingVisitor.meta === 'object' && !Array.isArray(existingVisitor.meta)
+      ? { ...existingVisitor.meta }
+      : {};
+  const cid = strTrim(body.client_id, 128);
+  if (cid) prevMeta.client_id = cid;
+  if (Object.keys(prevMeta).length) vpatch.meta = prevMeta;
 
   const profileIdSeed =
     visitorProfileId || hasContact
@@ -681,6 +689,8 @@ export async function handleTrackLeadEvent(cfg, body) {
     step_name: body.step_name || body.stage,
     step_index: body.step_index,
   });
+  const evCid = strTrim(body.client_id, 128);
+  if (evCid) meta.client_id = evCid;
   const occurredAt = new Date().toISOString();
 
   const row = {

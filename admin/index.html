@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
 </head>
 <body>
 
@@ -155,7 +156,7 @@
 
         <span class="nav-section-label">Insights</span>
         <a class="nav-item" href="#/analytics" data-panel="analytics">
-          <span class="nav-icon">▲</span>Page Traffic
+          <span class="nav-icon">▲</span>Traffic insights
         </a>
 
         <span class="nav-section-label">System</span>
@@ -194,12 +195,23 @@
             <ul class="dash-config-banner-list" id="dashConfigBannerList"></ul>
             <a class="btn btn--small dash-config-banner-cta" href="#/settings">Open settings</a>
           </div>
+          <div class="card wide dash-realtime-card" id="dashRealtimeCard">
+            <div class="card-label">Live traffic</div>
+            <p class="card-hint">Last 30 minutes — sessions with any tracked event (polls every 45s).</p>
+            <div class="dash-realtime-metrics" id="dashRealtimeMetrics" aria-live="polite">
+              <p class="detail-muted">Loading…</p>
+            </div>
+            <details class="dash-realtime-details">
+              <summary>Recent events</summary>
+              <ul class="dash-realtime-list" id="dashRealtimeList"></ul>
+            </details>
+          </div>
           <div class="primary-metrics-row" id="dashPrimaryRow" aria-live="polite">
             <p class="detail-muted" style="grid-column:1/-1;margin:0;">Connect your admin account and pick a date range to see revenue &amp; conversions.</p>
           </div>
           <div class="expand-actions">
             <button type="button" class="btn btn--small btn--ghost" id="dashToggleHealth" aria-expanded="false">Server health</button>
-            <button type="button" class="btn btn--small btn--ghost" id="dashToggleAllMetrics" aria-expanded="false">All metrics</button>
+            <button type="button" class="btn btn--small btn--ghost" id="dashToggleAllMetrics" aria-expanded="false">Advanced metrics</button>
             <button type="button" class="btn btn--small btn--ghost" id="dashToggleSnapshots" aria-expanded="false">Saved snapshots</button>
             <button type="button" class="btn btn--small btn--ghost" id="dashToggleApiSnap" aria-expanded="false">API snapshot</button>
           </div>
@@ -256,8 +268,17 @@
               </div>
               <p class="filter-card-hint" id="dashRangeHint"></p>
             </div>
-            <div class="card-label">More detail</div>
-            <p class="card-hint" id="analyticsHint">Connect to load numbers.</p>
+            <div class="dash-chart-block" id="dashChartBlock">
+              <div class="ga-chart-head">
+                <span class="ga-chart-title">Page views over time</span>
+                <span class="ga-chart-note detail-muted" id="dashTrafficSeriesNote"></span>
+              </div>
+              <div class="ga-chart-canvas-wrap ga-chart-canvas-wrap--dash">
+                <canvas id="dashTrafficChart" aria-label="Daily page views chart"></canvas>
+              </div>
+            </div>
+            <div class="card-label">Advanced metrics</div>
+            <p class="card-hint" id="analyticsHint">Full breakdown — every event is still stored; this panel is for deep dives.</p>
             <div class="analytics-grid hidden" id="analyticsGrid"></div>
           </div>
 
@@ -666,13 +687,22 @@
 
         <!-- ── PAGE TRAFFIC (Analytics) ───────────────────────────────── -->
         <section class="panel hidden" id="panel-analytics" data-panel>
-          <p class="panel-intro">How many people visited each page and how long they stayed. Shows unique visitors and total events per page for the selected period.</p>
+          <header class="ga-report-head">
+            <h2 class="ga-report-title">Traffic</h2>
+            <p class="ga-report-sub detail-muted">Sessions, content, and channels — your data only. <strong>Views</strong> = <code>page_view</code> only (same idea as GA4). <strong>Sessions</strong> = distinct browsers (<code>session_id</code>) that saw the page — not identical to GA4 &quot;Active users&quot;.</p>
+          </header>
           <div class="primary-metrics-row" id="analyticsPrimaryStrip" aria-live="polite"></div>
-          <p class="detail-muted" id="analyticsAppliedFilters" style="margin:6px 0 10px;">Filters: default</p>
+          <p class="detail-muted ga-applied-filters" id="analyticsAppliedFilters">Filters: default</p>
 
-          <div class="filter-card">
+          <div class="traffic-insights-tabs" role="tablist" aria-label="Traffic report">
+            <button type="button" class="filter-chip traffic-tab traffic-tab--active" data-analytics-tab="pages" role="tab" aria-selected="true">Pages</button>
+            <button type="button" class="filter-chip traffic-tab" data-analytics-tab="acquisition" role="tab" aria-selected="false">Acquisition</button>
+            <button type="button" class="filter-chip traffic-tab" data-analytics-tab="funnels" role="tab" aria-selected="false">Funnels</button>
+          </div>
+
+          <div class="filter-card ga-filter-card">
             <div class="filter-card-head">
-              <span class="filter-card-title">Time period</span>
+              <span class="filter-card-title">Date range</span>
               <div class="filter-chips" role="group" aria-label="Analytics presets">
                 <button type="button" class="filter-chip" data-date-panel="analytics" data-date-preset="today">Today</button>
                 <button type="button" class="filter-chip" data-date-panel="analytics" data-date-preset="yesterday">Yesterday</button>
@@ -680,42 +710,121 @@
                 <button type="button" class="filter-chip" data-date-panel="analytics" data-date-preset="last30">Last 30d</button>
               </div>
             </div>
-            <div class="admin-filters">
-              <input type="datetime-local" class="orders-input" id="analyticsDateFrom" title="From" />
-              <input type="datetime-local" class="orders-input" id="analyticsDateTo" title="To" />
-              <button type="button" class="btn btn--small" id="analyticsApply">Load pages</button>
+            <div class="ga-filter-primary">
+              <label class="ga-filter-label"><span>From</span>
+                <input type="datetime-local" class="orders-input" id="analyticsDateFrom" title="From" />
+              </label>
+              <label class="ga-filter-label"><span>To</span>
+                <input type="datetime-local" class="orders-input" id="analyticsDateTo" title="To" />
+              </label>
+              <button type="button" class="btn btn--small" id="analyticsApply">Apply</button>
+            </div>
+            <details class="ga-filter-details">
+              <summary class="ga-filter-details-sum">Path &amp; channel filters</summary>
+              <div class="admin-filters admin-filters--wrap ga-filter-details-body">
+                <input type="text" class="orders-input" id="analyticsPathPrefix" placeholder="Path starts with, e.g. /lp/" />
+                <input type="text" class="orders-input" id="acquisitionFilterSource" placeholder="utm_source equals" />
+                <input type="text" class="orders-input" id="acquisitionFilterMedium" placeholder="utm_medium equals" />
+                <input type="text" class="orders-input" id="acquisitionFilterCampaign" placeholder="utm_campaign contains" />
+              </div>
+            </details>
+          </div>
+
+          <div class="ga-charts-grid" id="analyticsChartsRow">
+            <div class="ga-chart-card" id="analyticsChartTrendWrap">
+              <div class="ga-chart-card-title">Page views over time</div>
+              <p class="detail-muted ga-chart-footnote" id="analyticsTrendNote"></p>
+              <div class="ga-chart-canvas-wrap"><canvas id="analyticsTrendChart"></canvas></div>
+            </div>
+            <div class="ga-chart-card" id="analyticsChartBarWrap">
+              <div class="ga-chart-card-title" id="analyticsBarTitle">Top pages</div>
+              <div class="ga-chart-canvas-wrap"><canvas id="analyticsBarChart"></canvas></div>
             </div>
           </div>
 
-          <p class="orders-msg" id="analyticsPagesMsg" hidden></p>
-          <div class="table-wrap table-wrap--wide" id="analyticsPagesWrap" hidden>
-            <table class="data-table data-table--dense" id="analyticsPagesTable">
-              <thead>
-                <tr>
-                  <th>Page / path</th>
-                  <th>Label</th>
-                  <th>Total events</th>
-                  <th>Unique visitors</th>
-                  <th>Daily breakdown</th>
-                </tr>
-              </thead>
-              <tbody id="analyticsPagesTbody"></tbody>
-            </table>
+          <div id="analyticsSectionPages" class="analytics-section">
+            <p class="orders-msg" id="analyticsPagesMsg" hidden></p>
+            <div class="table-wrap table-wrap--wide" id="analyticsPagesWrap" hidden>
+              <table class="data-table data-table--dense" id="analyticsPagesTable">
+                <thead>
+                  <tr>
+                    <th>Page</th>
+                    <th>Views</th>
+                    <th>Sessions</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="analyticsPagesTbody"></tbody>
+              </table>
+            </div>
+
+            <div class="card wide" id="analyticsPageDetailCard" hidden>
+              <div class="card-label" id="analyticsDetailTitle">Page detail</div>
+              <p class="card-hint" id="analyticsDetailHint"></p>
+              <div class="table-wrap" id="analyticsDetailWrap">
+                <table class="data-table data-table--dense">
+                  <thead>
+                    <tr>
+                      <th>Date (IST)</th>
+                      <th>Events</th>
+                    </tr>
+                  </thead>
+                  <tbody id="analyticsDetailTbody"></tbody>
+                </table>
+              </div>
+            </div>
           </div>
 
-          <div class="card wide" id="analyticsPageDetailCard" hidden>
-            <div class="card-label" id="analyticsDetailTitle">Page detail</div>
-            <p class="card-hint" id="analyticsDetailHint"></p>
-            <div class="table-wrap" id="analyticsDetailWrap">
+          <div id="analyticsSectionAcquisition" class="analytics-section hidden">
+            <p class="card-hint" style="margin-bottom:10px;">New visitors in range by UTM; lead counts match source + medium + campaign. Use <strong>Path &amp; channel filters</strong> above, then <strong>Load acquisition</strong>.</p>
+            <div class="ga-acq-actions">
+              <button type="button" class="btn btn--small" id="acquisitionApply">Load acquisition</button>
+            </div>
+            <p class="orders-msg" id="acquisitionMsg" hidden></p>
+            <div class="table-wrap table-wrap--wide" id="acquisitionWrap" hidden>
               <table class="data-table data-table--dense">
                 <thead>
                   <tr>
-                    <th>Date (IST)</th>
-                    <th>Events</th>
+                    <th>Source</th>
+                    <th>Medium</th>
+                    <th>Campaign</th>
+                    <th>Content</th>
+                    <th>Term</th>
+                    <th>New sessions</th>
+                    <th>Leads</th>
+                    <th>Leads paid</th>
                   </tr>
                 </thead>
-                <tbody id="analyticsDetailTbody"></tbody>
+                <tbody id="acquisitionTbody"></tbody>
               </table>
+            </div>
+          </div>
+
+          <div id="analyticsSectionFunnels" class="analytics-section hidden">
+            <p class="card-hint" style="margin-bottom:10px;">Funnel steps are checked in time order per session. Definitions live in <code>server/data/funnels.json</code> (defaults + admin save).</p>
+            <div class="admin-filters admin-filters--wrap">
+              <select class="orders-input" id="funnelSelect" aria-label="Funnel"></select>
+              <button type="button" class="btn btn--small" id="funnelRunBtn">Run funnel</button>
+              <button type="button" class="btn btn--small btn--ghost" id="funnelRefreshListBtn">Refresh list</button>
+            </div>
+            <p class="orders-msg" id="funnelMsg" hidden></p>
+            <div class="card wide hidden" id="funnelResultCard">
+              <div class="card-label" id="funnelResultTitle">Results</div>
+              <p class="card-hint" id="funnelResultHint"></p>
+              <div class="table-wrap">
+                <table class="data-table data-table--dense">
+                  <thead>
+                    <tr>
+                      <th>Step</th>
+                      <th>Kind</th>
+                      <th>Match</th>
+                      <th>Sessions reached</th>
+                      <th>Drop % vs prev</th>
+                    </tr>
+                  </thead>
+                  <tbody id="funnelResultTbody"></tbody>
+                </table>
+              </div>
             </div>
           </div>
         </section>

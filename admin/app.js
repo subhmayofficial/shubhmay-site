@@ -17,7 +17,7 @@
     customers: 'Customers',
     profiles: 'Profiles',
     leads: 'Leads',
-    analytics: 'Page Traffic',
+    analytics: 'Traffic insights',
     abandoned: 'Left Without Paying',
     settings: 'Settings',
   };
@@ -244,6 +244,10 @@
       if (gate) gate.style.display = '';
       gateResolved = false;
       runGateFlow();
+      if (dashRealtimePollTimer) {
+        clearInterval(dashRealtimePollTimer);
+        dashRealtimePollTimer = null;
+      }
     });
   }
 
@@ -358,6 +362,236 @@
   var abandonedPage = 1;
   var analyticsPreset = 'last7';
   var analyticsSelectedPath = '';
+  var analyticsActiveTab = 'pages';
+  var dashRealtimePollTimer = null;
+  var dashTrafficChartInst = null;
+  var analyticsTrendChartInst = null;
+  var analyticsBarChartInst = null;
+
+  function destroyChartInstance(ch) {
+    if (ch && typeof ch.destroy === 'function') {
+      try {
+        ch.destroy();
+      } catch (e) {}
+    }
+    return null;
+  }
+
+  function chartTheme() {
+    var st = getComputedStyle(document.documentElement);
+    return {
+      text: (st.getPropertyValue('--text').trim() || '#e8e8f0'),
+      grid: (st.getPropertyValue('--border').trim() || 'rgba(255,255,255,0.07)'),
+      accent: 'rgba(129, 140, 248, 0.95)',
+      accentFill: 'rgba(129, 140, 248, 0.14)',
+    };
+  }
+
+  function renderLineChart(canvasId, prevInst, series, datasetLabel) {
+    if (typeof Chart === 'undefined') return prevInst;
+    var el = document.getElementById(canvasId);
+    if (!el) return prevInst;
+    prevInst = destroyChartInstance(prevInst);
+    var th = chartTheme();
+    if (!series || !series.length) {
+      return prevInst;
+    }
+    var labels = series.map(function (p) {
+      return p.date;
+    });
+    var data = series.map(function (p) {
+      return p.pageViews != null ? p.pageViews : 0;
+    });
+    return new Chart(el.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: datasetLabel || 'Page views',
+            data: data,
+            borderColor: th.accent,
+            backgroundColor: th.accentFill,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { intersect: false, mode: 'index' },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(18,18,28,0.95)',
+            titleColor: th.text,
+            bodyColor: th.text,
+            borderColor: th.grid,
+            borderWidth: 1,
+          },
+        },
+        scales: {
+          x: {
+            ticks: { color: th.text, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
+            grid: { color: th.grid },
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { color: th.text },
+            grid: { color: th.grid },
+          },
+        },
+      },
+    });
+  }
+
+  function renderHorizontalBarChart(canvasId, prevInst, labels, values, datasetLabel) {
+    if (typeof Chart === 'undefined') return prevInst;
+    var el = document.getElementById(canvasId);
+    if (!el) return prevInst;
+    prevInst = destroyChartInstance(prevInst);
+    var th = chartTheme();
+    if (!labels || !labels.length) {
+      return prevInst;
+    }
+    return new Chart(el.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: datasetLabel || 'Views',
+            data: values,
+            backgroundColor: th.accent,
+            borderRadius: 4,
+          },
+        ],
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(18,18,28,0.95)',
+            titleColor: th.text,
+            bodyColor: th.text,
+            borderColor: th.grid,
+            borderWidth: 1,
+          },
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            ticks: { color: th.text },
+            grid: { color: th.grid },
+          },
+          y: {
+            ticks: { color: th.text, font: { size: 11 } },
+            grid: { display: false },
+          },
+        },
+      },
+    });
+  }
+
+  function renderDashTrafficChart(series, truncated) {
+    if (typeof Chart === 'undefined') return;
+    var note = document.getElementById('dashTrafficSeriesNote');
+    if (note) note.textContent = truncated ? 'Chart uses a capped sample — narrow the range if volume is high.' : '';
+    dashTrafficChartInst = renderLineChart('dashTrafficChart', dashTrafficChartInst, series, 'Page views');
+  }
+
+  function syncAnalyticsChartsLayout() {
+    var row = document.getElementById('analyticsChartsRow');
+    if (!row) return;
+    if (analyticsActiveTab === 'funnels') {
+      row.classList.add('hidden');
+      return;
+    }
+    row.classList.remove('hidden');
+    var trend = document.getElementById('analyticsChartTrendWrap');
+    var bar = document.getElementById('analyticsChartBarWrap');
+    if (analyticsActiveTab === 'acquisition') {
+      if (trend) trend.classList.add('hidden');
+      if (bar) {
+        bar.classList.remove('hidden');
+        bar.classList.add('ga-chart-card--wide');
+      }
+    } else {
+      if (trend) trend.classList.remove('hidden');
+      if (bar) {
+        bar.classList.remove('hidden');
+        bar.classList.remove('ga-chart-card--wide');
+      }
+    }
+  }
+
+  function refreshAnalyticsPageCharts(q, pagesJson) {
+    if (analyticsActiveTab !== 'pages') return;
+    var barTitle = document.getElementById('analyticsBarTitle');
+    if (barTitle) barTitle.textContent = 'Top pages';
+    fetch('/api/admin/analytics/traffic-series?' + q, { headers: authHeaders() })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (s) {
+        var note = document.getElementById('analyticsTrendNote');
+        if (note) note.textContent = s && s.truncated ? 'Partial sample — narrow the date range if numbers look off.' : '';
+        analyticsTrendChartInst = renderLineChart('analyticsTrendChart', analyticsTrendChartInst, (s && s.series) || [], 'Page views');
+      })
+      .catch(function () {});
+    if (pagesJson && pagesJson.ok && Array.isArray(pagesJson.pages)) {
+      var top = pagesJson.pages.slice().sort(function (a, b) {
+        return (b.events || 0) - (a.events || 0);
+      });
+      var n = Math.min(10, top.length);
+      var labels = [];
+      var vals = [];
+      for (var i = 0; i < n; i++) {
+        var p = top[i];
+        var lab = (p.label && p.label !== p.path ? p.label + ' ' : '') + String(p.path || '').slice(0, 42);
+        labels.push(lab || '—');
+        vals.push(p.events != null ? p.events : 0);
+      }
+      analyticsBarChartInst = renderHorizontalBarChart('analyticsBarChart', analyticsBarChartInst, labels, vals, 'Events');
+    }
+  }
+
+  function refreshAnalyticsAcquisitionChart(rows) {
+    if (analyticsActiveTab !== 'acquisition') return;
+    var barTitle = document.getElementById('analyticsBarTitle');
+    if (barTitle) barTitle.textContent = 'Top channels (new sessions)';
+    if (!rows || !rows.length) {
+      analyticsBarChartInst = destroyChartInstance(analyticsBarChartInst);
+      return;
+    }
+    var sorted = rows.slice().sort(function (a, b) {
+      return (b.newVisitorSessions || 0) - (a.newVisitorSessions || 0);
+    });
+    var n = Math.min(10, sorted.length);
+    var labels = [];
+    var vals = [];
+    for (var j = 0; j < n; j++) {
+      var r = sorted[j];
+      var src = r.utm_source != null && r.utm_source !== '' ? r.utm_source : '(not set)';
+      var med = r.utm_medium != null && r.utm_medium !== '' ? r.utm_medium : '';
+      labels.push(med ? src + ' / ' + med : src);
+      vals.push(r.newVisitorSessions != null ? r.newVisitorSessions : 0);
+    }
+    analyticsBarChartInst = renderHorizontalBarChart('analyticsBarChart', analyticsBarChartInst, labels, vals, 'Sessions');
+  }
+
+  function clearAnalyticsCharts() {
+    analyticsTrendChartInst = destroyChartInstance(analyticsTrendChartInst);
+    analyticsBarChartInst = destroyChartInstance(analyticsBarChartInst);
+    var tn = document.getElementById('analyticsTrendNote');
+    if (tn) tn.textContent = '';
+  }
 
   function dtLocalToIso(v) {
     if (!v || typeof v !== 'string') return '';
@@ -472,7 +706,7 @@
           visitorsPage = 1;
           loadVisitors();
         } else if (panel === 'analytics') {
-          loadPageAnalytics();
+          refreshAnalyticsActiveTab();
         } else if (panel === 'abandoned') {
           abandonedPage = 1;
           loadAbandoned();
@@ -855,19 +1089,33 @@
         break;
       case 'analytics':
         tiles = [
-          { label: 'Page views', value: t.pageViewsTotal, sub: 'Tracked page_view events' },
-          { label: 'Visitors active', value: t.visitorsActiveInPeriod, sub: 'Had activity in range' },
-          { label: 'Leads active', value: t.leadsActiveInPeriod, sub: 'Contact activity in range' },
-          { label: 'Funnel drops', value: t.funnelDropOffs, sub: 'No next step within 10 min' },
+          { label: 'Page views', value: t.pageViewsTotal, sub: 'Tracked page loads' },
+          {
+            label: 'Sessions (browsers)',
+            value: t.uniqueSessionsPageViews,
+            sub: t.uniqueSessionsPageViewsTruncated ? 'estimate (high volume)' : 'distinct session_id in range',
+          },
+          { label: 'New visitors', value: t.visitorsNew, sub: 'First visit in range' },
+          { label: 'New leads', value: t.leadsCollected, sub: 'First touch in range' },
+          {
+            label: 'Revenue',
+            value: t.revenueInr != null ? '₹' + Number(t.revenueInr).toFixed(2) : '—',
+            sub: 'Paid orders in range',
+          },
         ];
         break;
       default:
         tiles = [
-          { label: 'Revenue (window)', value: t.revenueInr != null ? '₹' + Number(t.revenueInr).toFixed(2) : '—', sub: 'Paid orders in range' },
-          { label: 'Paid orders', value: t.ordersPaid, sub: 'Razorpay paid' },
+          { label: 'Revenue', value: t.revenueInr != null ? '₹' + Number(t.revenueInr).toFixed(2) : '—', sub: 'Paid orders in range' },
+          { label: 'Paid orders', value: t.ordersPaid, sub: 'Completed payments' },
           { label: 'New leads', value: t.leadsCollected, sub: 'First touch in range' },
-          { label: 'Leads → paid', value: t.leadToOrderConversionPercent != null ? t.leadToOrderConversionPercent + '%' : '—', sub: 'Conversion' },
-          { label: 'Profiles active', value: t.profilesActive, sub: 'Merged people active in range' },
+          {
+            label: 'Lead → paid',
+            value: t.leadToOrderConversionPercent != null ? t.leadToOrderConversionPercent + '%' : '—',
+            sub: 'Of leads in this range',
+          },
+          { label: 'New visitors', value: t.visitorsNew, sub: 'First visit in range' },
+          { label: 'Page views', value: t.pageViewsTotal, sub: 'All tracked page_view events' },
         ];
         break;
     }
@@ -927,33 +1175,101 @@
     var stripEl = document.getElementById('analyticsPrimaryStrip');
     if (!stripEl || !canAuth()) return;
     var q = buildPageAnalyticsQuery();
-    Promise.all([fetchAnalyticsParams(q), fetch('/api/admin/analytics/pages?' + q, { headers: authHeaders() }).then(function (r) { return r.json(); })])
-      .then(function (pair) {
-        var a = pair[0];
-        var pages = pair[1];
+    syncAnalyticsChartsLayout();
+    if (analyticsActiveTab === 'pages') {
+      Promise.all([
+        fetchAnalyticsParams(q),
+        fetch('/api/admin/analytics/pages?' + q, { headers: authHeaders() }).then(function (r) {
+          return r.json();
+        }),
+      ])
+        .then(function (pair) {
+          var a = pair[0];
+          var pages = pair[1];
+          if (!a || !a.ok) {
+            stripEl.innerHTML = '<p class="detail-muted" style="grid-column:1/-1;">Load failed.</p>';
+            clearAnalyticsCharts();
+            return;
+          }
+          fillPrimaryMetricsRow(stripEl, a.period || a.today, 'Same range as filters below', 'analytics');
+          refreshAnalyticsPageCharts(q, pages);
+        })
+        .catch(function () {
+          stripEl.innerHTML = '<p class="detail-muted" style="grid-column:1/-1;">Network error.</p>';
+          clearAnalyticsCharts();
+        });
+      return;
+    }
+    if (analyticsActiveTab === 'acquisition') {
+      fetchAnalyticsParams(q)
+        .then(function (a) {
+          if (!a || !a.ok) {
+            stripEl.innerHTML = '<p class="detail-muted" style="grid-column:1/-1;">Load failed.</p>';
+            analyticsTrendChartInst = destroyChartInstance(analyticsTrendChartInst);
+            return;
+          }
+          fillPrimaryMetricsRow(stripEl, a.period || a.today, 'Same range as filters below', 'analytics');
+          analyticsTrendChartInst = destroyChartInstance(analyticsTrendChartInst);
+          var tn = document.getElementById('analyticsTrendNote');
+          if (tn) tn.textContent = '';
+        })
+        .catch(function () {
+          stripEl.innerHTML = '<p class="detail-muted" style="grid-column:1/-1;">Network error.</p>';
+        });
+      return;
+    }
+    fetchAnalyticsParams(q)
+      .then(function (a) {
         if (!a || !a.ok) {
           stripEl.innerHTML = '<p class="detail-muted" style="grid-column:1/-1;">Load failed.</p>';
           return;
         }
-        fillPrimaryMetricsRow(stripEl, a.period || a.today, 'Same window as page table below', 'analytics');
-        if (pages && pages.ok && Array.isArray(pages.pages) && pages.pages.length) {
-          var top = pages.pages.slice().sort(function (x, y) { return (y.events || 0) - (x.events || 0); })[0];
-          var hint = document.createElement('div');
-          hint.className = 'primary-metric-card';
-          hint.style.gridColumn = '1 / -1';
-          hint.innerHTML =
-            '<div class="primary-metric-label">Top page (events)</div><div class="primary-metric-value" style="font-size:15px;">' +
-            esc(top.label || top.path) +
-            '</div><div class="primary-metric-sub">' +
-            esc(String(top.events)) +
-            ' events · ' +
-            esc(String(top.uniqueSessions)) +
-            ' unique sessions</div>';
-          stripEl.appendChild(hint);
-        }
+        fillPrimaryMetricsRow(stripEl, a.period || a.today, 'Same range as filters below', 'analytics');
       })
       .catch(function () {
         stripEl.innerHTML = '<p class="detail-muted" style="grid-column:1/-1;">Network error.</p>';
+      });
+    clearAnalyticsCharts();
+  }
+
+  function loadDashboardRealtime() {
+    var m = document.getElementById('dashRealtimeMetrics');
+    var list = document.getElementById('dashRealtimeList');
+    if (!canAuth() || !m) return;
+    fetch('/api/admin/analytics/realtime?window_minutes=30', { headers: authHeaders() })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j || !j.ok) {
+          m.innerHTML = '<p class="detail-muted">Realtime unavailable.</p>';
+          if (list) list.innerHTML = '';
+          return;
+        }
+        var sub = 'Distinct session_id · last ' + (j.windowMinutes || 30) + ' min';
+        m.innerHTML =
+          '<div class="primary-metric-card"><div class="primary-metric-label">Active sessions</div><div class="primary-metric-value">' +
+          esc(String(j.activeSessions != null ? j.activeSessions : '—')) +
+          '</div><div class="primary-metric-sub">' +
+          esc(sub) +
+          '</div></div>';
+        if (j.truncated) {
+          m.innerHTML += '<p class="detail-muted" style="margin:8px 0 0;">Sample capped — very high volume.</p>';
+        }
+        if (list) {
+          list.innerHTML = '';
+          (j.recentEvents || []).forEach(function (ev) {
+            var li = document.createElement('li');
+            li.className = 'dash-realtime-item';
+            var ts = ev.created_at ? fmtTs(ev.created_at) : '—';
+            li.textContent =
+              ts + ' · ' + (ev._source || '') + ' · ' + (ev.event_name || ev.event_type || '—') + ' · ' + String(ev.path || '').slice(0, 96);
+            list.appendChild(li);
+          });
+        }
+      })
+      .catch(function () {
+        if (m) m.innerHTML = '<p class="detail-muted">Network error.</p>';
       });
   }
 
@@ -1025,6 +1341,10 @@
     } else if (panel === 'analytics') {
       if (gv('analyticsDateFrom') || gv('analyticsDateTo')) out.push('date range');
       if (!out.length) out.push('preset=' + (analyticsPreset || 'last7'));
+      if (gv('analyticsPathPrefix')) out.push('path_prefix=' + gv('analyticsPathPrefix'));
+      if (gv('acquisitionFilterSource')) out.push('utm_source=' + gv('acquisitionFilterSource'));
+      if (gv('acquisitionFilterMedium')) out.push('utm_medium=' + gv('acquisitionFilterMedium'));
+      if (gv('acquisitionFilterCampaign')) out.push('utm_campaign=' + gv('acquisitionFilterCampaign'));
     }
     return out.join(' · ');
   }
@@ -2614,16 +2934,30 @@
     if (preset && preset.from && preset.to) {
       p.set('date_from', preset.from);
       p.set('date_to', preset.to);
-      return p.toString();
-    }
-    var df = document.getElementById('analyticsDateFrom');
-    var dt = document.getElementById('analyticsDateTo');
-    if (df && dt && df.value && dt.value) {
-      p.set('date_from', dtLocalToIso(df.value));
-      p.set('date_to', dtLocalToIso(dt.value));
     } else {
-      p.set('preset', analyticsPreset || 'last7');
+      var df = document.getElementById('analyticsDateFrom');
+      var dt = document.getElementById('analyticsDateTo');
+      if (df && dt && df.value && dt.value) {
+        p.set('date_from', dtLocalToIso(df.value));
+        p.set('date_to', dtLocalToIso(dt.value));
+      } else {
+        p.set('preset', analyticsPreset || 'last7');
+      }
     }
+    var ap = document.getElementById('analyticsPathPrefix');
+    var pp = ap && ap.value != null ? String(ap.value).trim() : '';
+    if (pp) p.set('path_prefix', pp);
+    return p.toString();
+  }
+
+  function buildAcquisitionApiQuery() {
+    var p = new URLSearchParams(buildPageAnalyticsQuery());
+    var s = document.getElementById('acquisitionFilterSource');
+    var m = document.getElementById('acquisitionFilterMedium');
+    var c = document.getElementById('acquisitionFilterCampaign');
+    if (s && String(s.value).trim()) p.set('utm_source', String(s.value).trim());
+    if (m && String(m.value).trim()) p.set('utm_medium', String(m.value).trim());
+    if (c && String(c.value).trim()) p.set('utm_campaign', String(c.value).trim());
     return p.toString();
   }
 
@@ -2649,24 +2983,27 @@
           if (wrap) wrap.hidden = true;
           return;
         }
-        if (msg) setMsg(msg, j.truncated ? 'Partial window (row cap) — narrow the date range if needed.' : '', false);
+        var hintParts = [];
+        if (j.truncated) hintParts.push('Partial window (row cap) — narrow the date range if needed.');
+        if (j.metricNote) hintParts.push(j.metricNote);
+        if (msg) setMsg(msg, hintParts.length ? hintParts.join(' ') : '', false);
         var pages = j.pages || [];
         if (!tbody || !wrap) return;
         tbody.innerHTML = '';
         pages.forEach(function (pg) {
           var tr = document.createElement('tr');
+          var friendly = pg.label && String(pg.label) !== String(pg.path) ? '<span class="table-sub">' + esc(pg.label) + '</span>' : '';
           tr.innerHTML =
             '<td class="cell-clip">' +
             esc(pg.path) +
-            '</td><td>' +
-            esc(pg.label) +
+            (friendly ? '<br/>' + friendly : '') +
             '</td><td>' +
             esc(String(pg.events)) +
             '</td><td>' +
             esc(String(pg.uniqueSessions)) +
             '</td><td><button type="button" class="btn btn--small btn--ghost" data-analytics-path="' +
             esc(pg.path) +
-            '">Day breakdown</button></td>';
+            '">Trend</button></td>';
           tbody.appendChild(tr);
           var btn = tr.querySelector('[data-analytics-path]');
           if (btn) {
@@ -2722,6 +3059,206 @@
       .catch(function () {
         if (hint) hint.textContent = 'Network error';
       });
+  }
+
+  function loadAcquisitionAnalytics() {
+    var msg = document.getElementById('acquisitionMsg');
+    var wrap = document.getElementById('acquisitionWrap');
+    var tbody = document.getElementById('acquisitionTbody');
+    if (!canAuth()) {
+      if (msg) setMsg(msg, 'Connect admin first.', true);
+      if (wrap) wrap.hidden = true;
+      return;
+    }
+    if (msg) setMsg(msg, 'Loading acquisition…', false);
+    fetch('/api/admin/analytics/acquisition?' + buildAcquisitionApiQuery(), { headers: authHeaders() })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j || !j.ok) {
+          if (msg) setMsg(msg, (j && j.error) || 'Failed', true);
+          if (wrap) wrap.hidden = true;
+          return;
+        }
+        var truncNote = j.truncatedVisitors || j.truncatedLeads ? 'Row cap — narrow the date range if needed.' : '';
+        if (msg) setMsg(msg, truncNote, false);
+        var rows = j.rows || [];
+        if (!tbody || !wrap) return;
+        tbody.innerHTML = '';
+        rows.forEach(function (row) {
+          var tr = document.createElement('tr');
+          tr.innerHTML =
+            '<td class="cell-clip">' +
+            esc(row.utm_source != null ? row.utm_source : '(not set)') +
+            '</td><td>' +
+            esc(row.utm_medium != null ? row.utm_medium : '(not set)') +
+            '</td><td class="cell-clip">' +
+            esc(row.utm_campaign != null ? row.utm_campaign : '(not set)') +
+            '</td><td class="cell-clip">' +
+            esc(row.utm_content != null ? row.utm_content : '(not set)') +
+            '</td><td class="cell-clip">' +
+            esc(row.utm_term != null ? row.utm_term : '(not set)') +
+            '</td><td>' +
+            esc(String(row.newVisitorSessions != null ? row.newVisitorSessions : 0)) +
+            '</td><td>' +
+            esc(String(row.leadsFirstSeenInWindow != null ? row.leadsFirstSeenInWindow : 0)) +
+            '</td><td>' +
+            esc(String(row.leadsConvertedInWindow != null ? row.leadsConvertedInWindow : 0)) +
+            '</td>';
+          tbody.appendChild(tr);
+        });
+        wrap.hidden = rows.length === 0;
+        if (rows.length === 0 && msg) setMsg(msg, 'No acquisition rows in this range.', false);
+        refreshAnalyticsAcquisitionChart(rows);
+      })
+      .catch(function () {
+        if (msg) setMsg(msg, 'Network error', true);
+        refreshAnalyticsAcquisitionChart([]);
+      });
+  }
+
+  function loadFunnelOptions() {
+    var sel = document.getElementById('funnelSelect');
+    if (!sel || !canAuth()) return;
+    fetch('/api/admin/funnels', { headers: authHeaders() })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j || !j.ok) return;
+        var cur = sel.value;
+        sel.innerHTML = '';
+        (j.funnels || []).forEach(function (f) {
+          if (f.enabled === false) return;
+          var opt = document.createElement('option');
+          opt.value = f.id;
+          opt.textContent = f.name + ' (' + (f.stepCount || 0) + ' steps)';
+          sel.appendChild(opt);
+        });
+        if (cur) {
+          var ok = false;
+          for (var i = 0; i < sel.options.length; i++) {
+            if (sel.options[i].value === cur) {
+              ok = true;
+              break;
+            }
+          }
+          if (ok) sel.value = cur;
+        }
+      })
+      .catch(function () {});
+  }
+
+  function runFunnelAnalytics() {
+    var msg = document.getElementById('funnelMsg');
+    var card = document.getElementById('funnelResultCard');
+    var tbody = document.getElementById('funnelResultTbody');
+    var title = document.getElementById('funnelResultTitle');
+    var hint = document.getElementById('funnelResultHint');
+    var sel = document.getElementById('funnelSelect');
+    if (!canAuth()) {
+      if (msg) setMsg(msg, 'Connect admin first.', true);
+      return;
+    }
+    var fid = sel && sel.value ? sel.value : '';
+    if (!fid) {
+      if (msg) setMsg(msg, 'Pick a funnel or refresh list.', false);
+      if (card) card.classList.add('hidden');
+      return;
+    }
+    if (msg) setMsg(msg, 'Running funnel…', false);
+    var q = buildPageAnalyticsQuery() + '&funnel_id=' + encodeURIComponent(fid);
+    fetch('/api/admin/analytics/funnel?' + q, { headers: authHeaders() })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j || !j.ok) {
+          if (msg) setMsg(msg, (j && j.error) || 'Failed', true);
+          if (card) card.classList.add('hidden');
+          return;
+        }
+        if (msg) setMsg(msg, '', false);
+        if (title) title.textContent = j.funnelName || 'Results';
+        if (hint)
+          hint.textContent =
+            'Sessions in sample: ' +
+            (j.sessionsInSample != null ? j.sessionsInSample : '—') +
+            ' · completed funnel: ' +
+            (j.sessionsCompletedFunnel != null ? j.sessionsCompletedFunnel : '—') +
+            ' (' +
+            (j.completionRatePercent != null ? j.completionRatePercent : '—') +
+            '%)';
+        if (tbody) {
+          tbody.innerHTML = '';
+          (j.steps || []).forEach(function (st) {
+            var tr = document.createElement('tr');
+            var drop = st.dropOff == null ? '—' : String(st.dropOff) + '%';
+            tr.innerHTML =
+              '<td>' +
+              esc(String(st.index + 1)) +
+              '</td><td>' +
+              esc(st.kind || '') +
+              '</td><td class="cell-clip">' +
+              esc(st.value || '') +
+              '</td><td>' +
+              esc(String(st.sessionsReached)) +
+              '</td><td>' +
+              esc(drop) +
+              '</td>';
+            tbody.appendChild(tr);
+          });
+        }
+        if (card) card.classList.remove('hidden');
+      })
+      .catch(function () {
+        if (msg) setMsg(msg, 'Network error', true);
+      });
+  }
+
+  function refreshAnalyticsActiveTab() {
+    setAppliedFiltersText('analytics', summarizeFilters('analytics'));
+    if (analyticsActiveTab === 'pages') {
+      loadPageAnalytics();
+      if (analyticsSelectedPath) loadPageAnalyticsDetail(analyticsSelectedPath);
+      loadStripAnalyticsPanel();
+    } else if (analyticsActiveTab === 'acquisition') {
+      loadAcquisitionAnalytics();
+      loadStripAnalyticsPanel();
+    } else if (analyticsActiveTab === 'funnels') {
+      loadStripAnalyticsPanel();
+      runFunnelAnalytics();
+    }
+  }
+
+  function switchAnalyticsTab(tab) {
+    analyticsActiveTab = tab === 'acquisition' || tab === 'funnels' ? tab : 'pages';
+    syncAnalyticsChartsLayout();
+    document.querySelectorAll('.traffic-tab').forEach(function (b) {
+      var id = b.getAttribute('data-analytics-tab');
+      var on = id === analyticsActiveTab;
+      b.classList.toggle('traffic-tab--active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    var secPages = document.getElementById('analyticsSectionPages');
+    var secAcq = document.getElementById('analyticsSectionAcquisition');
+    var secFun = document.getElementById('analyticsSectionFunnels');
+    if (secPages) secPages.classList.toggle('hidden', analyticsActiveTab !== 'pages');
+    if (secAcq) secAcq.classList.toggle('hidden', analyticsActiveTab !== 'acquisition');
+    if (secFun) secFun.classList.toggle('hidden', analyticsActiveTab !== 'funnels');
+    if (analyticsActiveTab === 'pages') {
+      loadPageAnalytics();
+      if (analyticsSelectedPath) loadPageAnalyticsDetail(analyticsSelectedPath);
+      loadStripAnalyticsPanel();
+    } else if (analyticsActiveTab === 'acquisition') {
+      loadAcquisitionAnalytics();
+      loadStripAnalyticsPanel();
+    } else {
+      loadFunnelOptions();
+      loadStripAnalyticsPanel();
+    }
+    setAppliedFiltersText('analytics', summarizeFilters('analytics'));
   }
 
   function loadLeads() {
@@ -3049,6 +3586,15 @@
     var rangeHint = document.getElementById('dashRangeHint');
     var primaryRow = document.getElementById('dashPrimaryRow');
     if (!canAuth()) {
+      if (dashRealtimePollTimer) {
+        clearInterval(dashRealtimePollTimer);
+        dashRealtimePollTimer = null;
+      }
+      var rt = document.getElementById('dashRealtimeMetrics');
+      var rtl = document.getElementById('dashRealtimeList');
+      if (rt) rt.innerHTML = '';
+      if (rtl) rtl.innerHTML = '';
+      dashTrafficChartInst = destroyChartInstance(dashTrafficChartInst);
       if (primaryRow) {
         primaryRow.innerHTML =
           '<p class="detail-muted" style="grid-column:1/-1;margin:0;">Connect admin to see revenue, leads, and conversions.</p>';
@@ -3062,6 +3608,12 @@
       return;
     }
     if (dashCard) dashCard.hidden = false;
+    if (dashRealtimePollTimer) {
+      clearInterval(dashRealtimePollTimer);
+      dashRealtimePollTimer = null;
+    }
+    loadDashboardRealtime();
+    dashRealtimePollTimer = setInterval(loadDashboardRealtime, 45000);
     loadDashboardConfigBanner();
     if (apiCard) apiCard.hidden = true;
     updateDashChipActive();
@@ -3082,6 +3634,20 @@
         var al = a.allTime || {};
         var pr = a.preset || '';
         if (primaryRow) fillPrimaryMetricsRow(primaryRow, t, null);
+        fetch('/api/admin/analytics/traffic-series?' + buildAnalyticsQuery(), { headers: authHeaders() })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (s) {
+            if (!s || !s.ok) {
+              renderDashTrafficChart([], false);
+              return;
+            }
+            renderDashTrafficChart(s.series || [], s.truncated);
+          })
+          .catch(function () {
+            renderDashTrafficChart([], false);
+          });
         if (!analyticsGrid) {
           return;
         }
@@ -3108,8 +3674,17 @@
           { label: 'Paid orders (period)', value: t.ordersPaid, sub: 'Revenue ₹' + (t.revenueInr != null ? t.revenueInr.toFixed(2) : '—') },
           { label: 'From lead tracking', value: t.ordersAttributedToLead, sub: 'Orders with lead_id' },
           { label: 'Direct purchases', value: t.ordersDirectPurchase, sub: 'No lead_id on order' },
-          { label: 'Page views (tracked)', value: t.pageViewsTotal, sub: 'page_view events' },
-          { label: 'Visitors active', value: t.visitorsActiveInPeriod, sub: 'last_seen in window' },
+          {
+            label: 'Page views (tracked)',
+            value: t.pageViewsTotal,
+            sub: 'visitor_events + lead_events · page_view',
+          },
+          {
+            label: 'Unique sessions (page views)',
+            value: t.uniqueSessionsPageViews,
+            sub: t.uniqueSessionsPageViewsTruncated ? 'approx. if many rows' : 'distinct session_id',
+          },
+          { label: 'Visitors active', value: t.visitorsActiveInPeriod, sub: 'last_seen in window (browser id)' },
           { label: 'Abandon rows', value: t.abandonedCheckoutSessions, sub: 'checkout last_event in window' },
           { label: 'Abandons → paid', value: t.abandonedLaterPaid, sub: 'later got converted_order_id' },
           { label: 'Funnel drop-offs', value: t.funnelDropOffs, sub: '10-minute timeout derived' },
@@ -3183,6 +3758,12 @@
   }
 
   function loadCurrentPanel() {
+    if (currentPanel !== 'dashboard') {
+      if (dashRealtimePollTimer) {
+        clearInterval(dashRealtimePollTimer);
+        dashRealtimePollTimer = null;
+      }
+    }
     switch (currentPanel) {
       case 'orders':
         setAppliedFiltersText('orders', summarizeFilters('orders'));
@@ -3205,9 +3786,7 @@
         loadLeads();
         break;
       case 'analytics':
-        setAppliedFiltersText('analytics', summarizeFilters('analytics'));
-        loadStripAnalyticsPanel();
-        loadPageAnalytics();
+        refreshAnalyticsActiveTab();
         break;
       case 'abandoned':
         setAppliedFiltersText('abandoned', summarizeFilters('abandoned'));
@@ -3248,6 +3827,13 @@
         if (dateChip && dateChip.getAttribute('data-date-panel') && dateChip.getAttribute('data-date-preset')) {
           e.preventDefault();
           applyDatePresetForPanel(dateChip.getAttribute('data-date-panel'), dateChip.getAttribute('data-date-preset'));
+          return;
+        }
+
+        var trafficTab = t.closest('button[data-analytics-tab]');
+        if (trafficTab && main.contains(trafficTab)) {
+          e.preventDefault();
+          switchAnalyticsTab(trafficTab.getAttribute('data-analytics-tab'));
           return;
         }
 
@@ -3311,7 +3897,7 @@
             if (hid) ag.classList.remove('hidden');
             else ag.classList.add('hidden');
           }
-          btn.textContent = hid ? 'Hide all metrics' : 'All metrics';
+          btn.textContent = hid ? 'Hide advanced metrics' : 'Advanced metrics';
           btn.setAttribute('aria-expanded', hid ? 'true' : 'false');
           return;
         }
@@ -3459,9 +4045,23 @@
         }
         if (bid === 'analyticsApply') {
           e.preventDefault();
-          loadPageAnalytics();
-          if (analyticsSelectedPath) loadPageAnalyticsDetail(analyticsSelectedPath);
+          refreshAnalyticsActiveTab();
+          return;
+        }
+        if (bid === 'acquisitionApply') {
+          e.preventDefault();
+          loadAcquisitionAnalytics();
           setAppliedFiltersText('analytics', summarizeFilters('analytics'));
+          return;
+        }
+        if (bid === 'funnelRunBtn') {
+          e.preventDefault();
+          runFunnelAnalytics();
+          return;
+        }
+        if (bid === 'funnelRefreshListBtn') {
+          e.preventDefault();
+          loadFunnelOptions();
           return;
         }
         if (bid === 'abandonedFilterApply') {

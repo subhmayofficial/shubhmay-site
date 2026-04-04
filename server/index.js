@@ -55,8 +55,12 @@ import {
   adminCustomerActivityTimeline,
   adminRebuildProfilesNow,
 } from './lib/admin.js';
-import { adminPageAnalytics, adminPageAnalyticsDetail } from './lib/pageAnalytics.js';
+import { adminPageAnalytics, adminPageAnalyticsDetail, adminTrafficDailySeries } from './lib/pageAnalytics.js';
 import { getConnectionsSnapshot, runConnectionTests } from './lib/connectionsHealth.js';
+import { adminAcquisitionAnalytics } from './lib/acquisitionAnalytics.js';
+import { adminRealtimeAnalytics } from './lib/realtimeAnalytics.js';
+import { adminFunnelAnalytics, adminListFunnels } from './lib/funnelAnalytics.js';
+import { saveFunnelDefinitions } from './lib/funnelsStore.js';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -586,6 +590,61 @@ app.get('/api/admin/analytics/pages', async (req, res) => {
     return;
   }
   res.json(out);
+});
+
+app.get('/api/admin/analytics/traffic-series', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const out = await adminTrafficDailySeries(getConfig(), req.query);
+  if (!out.ok) {
+    res.status(502).json({ ok: false, error: out.error ?? 'Series failed' });
+    return;
+  }
+  res.json(out);
+});
+
+app.get('/api/admin/analytics/acquisition', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const out = await adminAcquisitionAnalytics(getConfig(), req.query);
+  if (!out.ok) {
+    res.status(502).json({ ok: false, error: out.error ?? 'Acquisition analytics failed' });
+    return;
+  }
+  res.json(out);
+});
+
+app.get('/api/admin/analytics/realtime', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const out = await adminRealtimeAnalytics(getConfig(), req.query);
+  if (!out.ok) {
+    res.status(502).json({ ok: false, error: out.error ?? 'Realtime failed' });
+    return;
+  }
+  res.json(out);
+});
+
+app.get('/api/admin/analytics/funnel', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const out = await adminFunnelAnalytics(getConfig(), req.query);
+  if (!out.ok) {
+    res.status(400).json({ ok: false, error: out.error ?? 'Funnel failed' });
+    return;
+  }
+  res.json(out);
+});
+
+app.get('/api/admin/funnels', (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  res.json(adminListFunnels());
+});
+
+app.post('/api/admin/funnels', (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const out = saveFunnelDefinitions(req.body || {});
+    res.json({ ok: true, ...out });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message || 'Save failed' });
+  }
 });
 
 app.get('/api/admin/visitors/:id/timeline', async (req, res) => {
