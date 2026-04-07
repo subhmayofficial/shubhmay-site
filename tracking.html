@@ -145,10 +145,10 @@
   }
 
   function ensureSid() {
-    var sid = sessionStorage.getItem('shubhmay_sid');
+    var sid = sessionStorage.getItem('vedguide_sid');
     if (!sid) {
       sid = 's_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
-      sessionStorage.setItem('shubhmay_sid', sid);
+      sessionStorage.setItem('vedguide_sid', sid);
     }
     return sid;
   }
@@ -159,13 +159,13 @@
   var params = new URLSearchParams(window.location.search);
   ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (k) {
     var v = params.get(k);
-    if (v && !sessionStorage.getItem('shubhmay_' + k)) sessionStorage.setItem('shubhmay_' + k, v);
+    if (v && !sessionStorage.getItem('vedguide_' + k)) sessionStorage.setItem('vedguide_' + k, v);
   });
 
   function utmObj() {
     var o = {};
     ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (k) {
-      var v = sessionStorage.getItem('shubhmay_' + k);
+      var v = sessionStorage.getItem('vedguide_' + k);
       if (v) o[k] = v;
     });
     return o;
@@ -241,9 +241,9 @@
   });
 
   document.getElementById('btnNewSession').addEventListener('click', function () {
-    sessionStorage.removeItem('shubhmay_sid');
+    sessionStorage.removeItem('vedguide_sid');
     ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (k) {
-      sessionStorage.removeItem('shubhmay_' + k);
+      sessionStorage.removeItem('vedguide_' + k);
     });
     location.reload();
   });

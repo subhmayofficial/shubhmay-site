@@ -274,6 +274,7 @@
       .sub { font-size: 1.15rem; margin-bottom: 14px; line-height: 1.65; }
     }
   </style>
+  <script src="/js/vedguide-track.js"></script>
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body>
@@ -355,14 +356,72 @@
       var activePlan = null;
 
       var leadSession = (function () {
-        var k = 'sm_site_session';
-        var s = sessionStorage.getItem(k);
-        if (!s) {
-          s = 'lead_' + Math.floor(Math.random() * 1e9).toString().padStart(9, '0');
-          sessionStorage.setItem(k, s);
+        if (window.VedGuideTrack && typeof window.VedGuideTrack.getSessionId === 'function') {
+          return window.VedGuideTrack.getSessionId();
         }
+        var primary = 'vedguide_sid';
+        var legacy = 'sm_site_session';
+        var s = null;
+        try {
+          s = localStorage.getItem(primary);
+        } catch (e) {}
+        if (!s) s = sessionStorage.getItem(primary) || sessionStorage.getItem(legacy);
+        if (!s) {
+          s = 's_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 11);
+        }
+        try {
+          localStorage.setItem(primary, s);
+        } catch (e) {}
+        sessionStorage.setItem(primary, s);
+        sessionStorage.setItem(legacy, s);
+        try {
+          localStorage.setItem(legacy, s);
+        } catch (e) {}
+        window._vedguideSid = s;
         return s;
       })();
+      window.__smLeadId = window.__smLeadId || null;
+      if (window.VedGuideTrack && typeof window.VedGuideTrack.init === 'function') {
+        window.VedGuideTrack.init({
+          sourcePage: 'consultancy-checkout',
+          eventType: 'consultancy_checkout',
+          meta: { page: 'consultancy_checkout', funnel: 'consultancy_checkout' },
+        });
+      }
+
+      function upsertConsultancyLead(name, email, phone, topic, utm) {
+        return fetch('/api/track/lead', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: leadSession,
+            lead_id: window.__smLeadId || null,
+            name: name,
+            email: email,
+            phone: phone,
+            conversion_form: 'consultancy_checkout_form',
+            source_page: 'consultancy-checkout',
+            landing_path: window.location.pathname + window.location.search,
+            referrer: document.referrer || '',
+            document_referrer: document.referrer || '',
+            user_agent: navigator.userAgent || '',
+            client_language: navigator.language || '',
+            screen_width: window.screen && window.screen.width,
+            screen_height: window.screen && window.screen.height,
+            utm_source: utm.utm_source || '',
+            utm_medium: utm.utm_medium || '',
+            utm_campaign: utm.utm_campaign || '',
+            utm_content: utm.utm_content || '',
+            utm_term: utm.utm_term || '',
+            meta: { topic: topic || '' }
+          })
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            if (j && j.leadId) window.__smLeadId = j.leadId;
+          })
+          .catch(function () {});
+      }
 
       function msg(el, text, type) {
         el.textContent = text || '';
@@ -512,26 +571,27 @@
         confirmBtn.disabled = true;
         confirmBtn.textContent = 'Starting payment…';
         var q = qsObj();
-        var commonPayload = {
-          session_id: leadSession,
-          lead_id: window.__smLeadId || null,
-          name: name,
-          email: email,
-          phone: phone,
-          topic: topic,
-          notes: notes,
-          slot_start: selectedSlot,
-          plan_code: activePlan.code,
-          source_page: 'consultancy-checkout',
-          landing_path: window.location.pathname + window.location.search,
-          referrer: document.referrer || '',
-          utm_source: q.utm_source || '',
-          utm_medium: q.utm_medium || '',
-          utm_campaign: q.utm_campaign || '',
-          utm_content: q.utm_content || '',
-          utm_term: q.utm_term || ''
-        };
-        fetch('/api/consultancy/order', {
+        upsertConsultancyLead(name, email, phone, topic, q).then(function () {
+          var commonPayload = {
+            session_id: leadSession,
+            lead_id: window.__smLeadId || null,
+            name: name,
+            email: email,
+            phone: phone,
+            topic: topic,
+            notes: notes,
+            slot_start: selectedSlot,
+            plan_code: activePlan.code,
+            source_page: 'consultancy-checkout',
+            landing_path: window.location.pathname + window.location.search,
+            referrer: document.referrer || '',
+            utm_source: q.utm_source || '',
+            utm_medium: q.utm_medium || '',
+            utm_campaign: q.utm_campaign || '',
+            utm_content: q.utm_content || '',
+            utm_term: q.utm_term || ''
+          };
+          return fetch('/api/consultancy/order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(commonPayload)
@@ -604,6 +664,7 @@
               confirmBtn.textContent = 'Confirm Booking';
             }
           });
+        });
       });
 
       fetch('/api/consultancy/config')

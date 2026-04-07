@@ -472,7 +472,7 @@
                 <span>🔒</span>
                 <span>Price locked at <strong>₹<span id="sticky-price">499</span></strong> for the next <span id="timer-text">10:00</span>.</span>
             </div>
-            <div class="sticky-price-right">Secure checkout via Razorpay • UPI / Cards • 256‑bit SSL</div>
+            <div class="sticky-price-right">Secure checkout • UPI / Cards • 256‑bit SSL</div>
         </div>
     </div>
     <header class="checkout-header">
@@ -560,7 +560,7 @@
 
                         <button type="submit" id="pay-btn" class="checkout-cta">Pay Now</button>
                         <div style="margin-top:10px; text-align:center; font-size:0.8rem; color:var(--text-muted);">
-                            <span>🔒 Secure checkout powered by Razorpay • UPI / Cards • Netbanking • 256‑bit SSL</span>
+                            <span>🔒 Secure checkout • UPI / Cards • Netbanking • 256‑bit SSL</span>
                         </div>
                     </form>
                     <div id="rz-success" style="display:none;margin-top:24px;padding:24px;border-radius:12px;background:rgba(68,166,106,0.12);border:1px solid rgba(68,166,106,0.35);">
@@ -575,7 +575,7 @@
                     <h2 class="summary-title">Order summary</h2>
                     <div class="product-item">
                         <div class="product-img-box">
-                            <img src="https://primedit-cdn.b-cdn.net/shubhmay-lp-kundli/astroguruashutoshsize.jpg" alt="" width="70" height="70">
+                            <img src="https://primedit-cdn.b-cdn.net/vedguide-lp-kundli/astroguruashutoshsize.jpg" alt="" width="70" height="70">
                         </div>
                         <div>
                             <p class="product-name">Personalized Janam Kundli Report</p>
@@ -651,12 +651,23 @@
             var birthPlaceChosen = false;
 
             var sessionId = (function () {
-                var k = 'sm_site_session';
-                var s = sessionStorage.getItem(k);
+                var primary = 'vedguide_sid';
+                var legacy = 'sm_site_session';
+                var s = '';
+                try {
+                    s = localStorage.getItem(primary) || localStorage.getItem(legacy) || '';
+                } catch (e) {}
+                if (!s) s = sessionStorage.getItem(primary) || sessionStorage.getItem(legacy);
                 if (!s) {
-                    s = 'sess_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 12);
-                    sessionStorage.setItem(k, s);
+                    s = 's_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 11);
                 }
+                try {
+                    localStorage.setItem(primary, s);
+                    localStorage.setItem(legacy, s);
+                } catch (e) {}
+                sessionStorage.setItem(primary, s);
+                sessionStorage.setItem(legacy, s);
+                window._vedguideSid = s;
                 return s;
             })();
             var checkoutSessionId = (function () {
@@ -859,7 +870,7 @@
                         updatePriceDisplay(BASE_PRICE);
                     }
                     if (!cfg.razorpayReady && couponStatusEl) {
-                        couponStatusEl.textContent = 'Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to server .env to enable payment.';
+                        couponStatusEl.textContent = 'Payment is temporarily unavailable. Please try again in a few minutes.';
                     }
                     if (cfg.googleMapsBrowserKey) {
                         injectGoogleMapsScript(cfg.googleMapsBrowserKey);
@@ -918,9 +929,9 @@
                         return;
                     }
                     couponStatusEl.textContent =
-                        'Coupon discounts will use server pricing soon. Paying full amount for now (₹' +
+                        'Coupons are not applied yet. You are paying ₹' +
                         Math.round(BASE_PRICE) +
-                        ').';
+                        ' for now.';
                 });
             }
 
@@ -928,7 +939,7 @@
                 e.preventDefault();
                 if (!validate()) return;
                 if (typeof Razorpay === 'undefined') {
-                    alert('Razorpay could not load. Check your connection and try again.');
+                    alert('Payment could not load. Check your connection and try again.');
                     return;
                 }
                 payBtn.disabled = true;

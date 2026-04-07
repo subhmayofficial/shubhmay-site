@@ -1,7 +1,8 @@
 import { DateTime } from 'luxon';
 import { supabaseRequest } from './supabase.js';
 import { razorpayCreateOrder, verifyPaymentSignature } from './razorpay.js';
-import { strTrim, uuidOk } from './strings.js';
+import { normalizeEmail, normalizePhone, strTrim, uuidOk } from './strings.js';
+import { attachProfileToRecord, ensurePersonProfile, refreshPersonProfileStats } from './personProfiles.js';
 
 const TZ = 'Asia/Kolkata';
 
@@ -237,8 +238,39 @@ export async function handleConsultancyBook(cfg, body) {
       utm_term: strTrim(body.utm_term, 256),
     },
   };
+  const personProfileId = await ensurePersonProfile(cfg, {
+    name,
+    email: normalizeEmail(email),
+    phone: normalizePhone(phone),
+    first_seen_at: new Date().toISOString(),
+    last_seen_at: new Date().toISOString(),
+    first_touch_path: row.meta.landing_path,
+    first_touch_source: row.meta.source_page,
+    first_touch_referrer: row.meta.referrer,
+    last_touch_path: row.meta.landing_path,
+    last_touch_source: row.meta.source_page,
+    last_touch_referrer: row.meta.referrer,
+    hasContact: true,
+    hasPaid: true,
+    lead_status: 'converted',
+    lifecycle_stage: 'customer',
+  });
+  if (personProfileId) row.person_profile_id = personProfileId;
   const ins = await supabaseRequest(cfg, 'POST', 'consultancy_bookings', JSON.stringify(row), 'return=minimal');
   if (ins.code >= 200 && ins.code < 300) {
+    if (personProfileId && row.lead_id) await attachProfileToRecord(cfg, 'leads', row.lead_id, personProfileId);
+    if (personProfileId) {
+      const ref = await supabaseRequest(
+        cfg,
+        'GET',
+        `consultancy_bookings?razorpay_order_id=eq.${encodeURIComponent(rzOrderId)}&select=id&limit=1`
+      );
+      if (ref.code >= 200 && ref.code < 300) {
+        const rows = JSON.parse(ref.body || '[]');
+        if (rows[0]?.id) await attachProfileToRecord(cfg, 'consultancy_bookings', rows[0].id, personProfileId);
+      }
+      await refreshPersonProfileStats(cfg, personProfileId);
+    }
     return { status: 200, json: { ok: true, slot_start: slotStart, timezone: TZ } };
   }
   const b = ins.body || '';

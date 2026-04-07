@@ -16,16 +16,16 @@
   <meta name="description"
     content="Kya aap sahi dhatu pehen rahe ho? Apni rashi ke hisaab se right ear metal jaanen. Janam kundli se exact report – ₹499.">
   <script>window.dataLayer = window.dataLayer || [];</script>
-  <script src="/js/shubhmay-track.js"></script>
+  <script src="/js/vedguide-track.js"></script>
   <script>
     (function () {
-      ShubhmayTrack.init({
+      VedGuideTrack.init({
         sourcePage: 'metal-finder',
         eventType: 'metal_finder',
         meta: { page: 'metal_finder', funnel: 'metal_finder' }
       });
-      window._shubhmayTrack = function (et, pl) {
-        ShubhmayTrack.track(et, pl || {}, { eventType: 'metal_finder' });
+      window._vedguideTrack = function (et, pl) {
+        VedGuideTrack.track(et, pl || {}, { eventType: 'metal_finder' });
       };
     })();
   </script>
@@ -1669,7 +1669,7 @@
         </ul>
         <button type="button" class="btn" id="cta-pay" data-cta="offer" data-i18n="step5Cta">Generate My Kundli</button>
         <p class="reassurance"><span data-i18n="step5Reassure">Secure • No spam • Support:</span> <a
-            href="mailto:shubh@shubhmay.com">shubh@shubhmay.com</a></p>
+            href="mailto:shubh@vedguide.com">shubh@vedguide.com</a></p>
       </div>
     </section>
 
@@ -1680,7 +1680,7 @@
         <h2 class="headline" id="step6-title" data-i18n="step6Title">Thank you!</h2>
         <p class="sub" data-i18n="step6Sub">We will contact you on WhatsApp for birth details.</p>
         <div class="contact-block">
-          <p>Support: <a href="mailto:shubh@shubhmay.com">shubh@shubhmay.com</a></p>
+          <p>Support: <a href="mailto:shubh@vedguide.com">shubh@vedguide.com</a></p>
           <p>WhatsApp: <a href="https://wa.me/918002560943">8002560943</a></p>
           <p class="trust-line" data-i18n="step6Spam">Check spam/promotions folder</p>
         </div>
@@ -1953,7 +1953,7 @@
           window.dataLayer = window.dataLayer || [];
           window.dataLayer.push(Object.assign({ event }, data));
           var payload = Object.assign({ page: 'metal_finder' }, data);
-          if (window._shubhmayTrack) window._shubhmayTrack(event, payload);
+          if (window._vedguideTrack) window._vedguideTrack(event, payload);
         } catch (e) { }
       }
 
@@ -1967,21 +1967,19 @@
       function getUtmPayload() {
         var o = { utm_source: null, utm_medium: null, utm_campaign: null };
         try {
-          o.utm_source = sessionStorage.getItem('shubhmay_utm_source') || null;
-          o.utm_medium = sessionStorage.getItem('shubhmay_utm_medium') || null;
-          o.utm_campaign = sessionStorage.getItem('shubhmay_utm_campaign') || null;
+          o.utm_source = sessionStorage.getItem('vedguide_utm_source') || null;
+          o.utm_medium = sessionStorage.getItem('vedguide_utm_medium') || null;
+          o.utm_campaign = sessionStorage.getItem('vedguide_utm_campaign') || null;
         } catch (e) { }
         return o;
       }
 
       function hasPhoneForMetalSkip() {
-        if (sessionStorage.getItem('shubhmay_kundli_preview_done') === '1') return true;
-        var p = sessionStorage.getItem('shubhmay_metal_finder_phone');
-        return !!(p && /^[6-9]\d{9}$/.test(p));
+        return true;
       }
 
       function getWhatsAppPhoneForEmit() {
-        var p = sessionStorage.getItem('shubhmay_metal_finder_phone') || sessionStorage.getItem('shubhmay_kundli_preview_phone');
+        var p = sessionStorage.getItem('vedguide_kundli_preview_phone');
         return p && /^[6-9]\d{9}$/.test(p) ? p : '';
       }
 
@@ -2019,28 +2017,8 @@
         }
       }
 
-      function saveMetalFinderLead(payload) {
-        if (sessionStorage.getItem('shubhmay_kundli_preview_done') === '1') return Promise.resolve();
-        var utm = getUtmPayload();
-        var sid = window._shubhmaySid || sessionStorage.getItem('shubhmay_sid');
-        if (!sid) return Promise.resolve();
-        return fetch('/api/track/lead', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            session_id: sid,
-            phone: payload.phone,
-            source_page: 'metal-finder',
-            landing_path: location.pathname + location.search,
-            referrer: document.referrer || null,
-            document_referrer: document.referrer || null,
-            user_agent: navigator.userAgent,
-            client_language: navigator.language,
-            utm_source: utm.utm_source,
-            utm_medium: utm.utm_medium,
-            utm_campaign: utm.utm_campaign
-          })
-        }).catch(function () {});
+      function saveMetalFinderLead() {
+        return Promise.resolve();
       }
 
       function showStep(n) {
@@ -2107,11 +2085,7 @@
           selectedRashi = key;
           emit('rashi_selected', { rashi: key, metal: r.metal });
           emit('cta_click', { cta_location: 'rashi_select', cta_label: displayName, step_index: 2 });
-          if (hasPhoneForMetalSkip()) {
-            showStep(3);
-          } else {
-            showPhoneGateForRashi();
-          }
+          showStep(3);
         });
         grid.appendChild(card);
       });
@@ -2178,16 +2152,11 @@
           return;
         }
         errEl.style.display = 'none';
-        try {
-          sessionStorage.setItem('shubhmay_metal_finder_phone', phone);
-        } catch (e) { }
         emit('metal_finder_phone_submit', {
-          phone: phone,
           rashi: selectedRashi,
           metal: selectedRashi && RASHI_METAL_MAP[selectedRashi] ? RASHI_METAL_MAP[selectedRashi].metal : '',
           whatsapp_opt_in: true
         });
-        saveMetalFinderLead({ phone: phone, rashi: selectedRashi, whatsapp_opt_in: true });
         resetStep2PhoneGate();
         showStep(3);
       });
@@ -2207,7 +2176,7 @@
           var rashi = selectedRashi || '';
           var metal = (selectedRashi && RASHI_METAL_MAP[selectedRashi]) ? RASHI_METAL_MAP[selectedRashi].metal : '';
           var rashiName = rashi ? getRashiName(rashi) : '';
-          emit('whatsapp_click', { phone: ph, rashi: rashi, metal: metal, rashi_display: rashiName, lead: false, skipped_modal: true, whatsapp_opt_in: true });
+          emit('whatsapp_click', { rashi: rashi, metal: metal, rashi_display: rashiName, lead: false, skipped_modal: true, whatsapp_opt_in: true });
           window.location.href = 'https://whatsapp.com/channel/0029VbCI7Yu5Ui2VV24kwC42';
           return;
         }
@@ -2242,7 +2211,7 @@
         var rashi = selectedRashi || '';
         var metal = (selectedRashi && RASHI_METAL_MAP[selectedRashi]) ? RASHI_METAL_MAP[selectedRashi].metal : '';
         var rashiName = rashi ? getRashiName(rashi) : '';
-        emit('whatsapp_click', { phone: phone, rashi: rashi, metal: metal, rashi_display: rashiName, lead: true, whatsapp_opt_in: true });
+        emit('whatsapp_click', { rashi: rashi, metal: metal, rashi_display: rashiName, lead: true, whatsapp_opt_in: true });
         errEl.style.display = 'none';
         document.getElementById('whatsappPhoneModal').classList.remove('visible');
         window.location.href = 'https://whatsapp.com/channel/0029VbCI7Yu5Ui2VV24kwC42';

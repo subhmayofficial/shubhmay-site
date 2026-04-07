@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="/js/shubhmay-track.js" defer></script>
+  <script src="/js/vedguide-track.js" defer></script>
   <style>
     :root {
       --maroon:   #1e0610;
@@ -804,8 +804,8 @@
   <script>
     (function () {
       document.addEventListener("DOMContentLoaded", function () {
-        if (window.ShubhmayTrack) {
-          ShubhmayTrack.init({ sourcePage: 'mahamantra', meta: { page: 'mahamantra' } });
+        if (window.VedGuideTrack) {
+          VedGuideTrack.init({ sourcePage: 'mahamantra', meta: { page: 'mahamantra' } });
         }
       });
 
@@ -819,7 +819,22 @@
 
       function track(et, pl) {
         if (window.dataLayer) window.dataLayer.push(Object.assign({ event: et }, pl));
-        if (window.ShubhmayTrack) ShubhmayTrack.track(et, pl || {}, {});
+        if (window.VedGuideTrack) VedGuideTrack.track(et, pl || {}, {});
+      }
+
+      function upsertMahamantraLead(name, phone) {
+        if (!window.VedGuideTrack || typeof window.VedGuideTrack.submitLead !== 'function') {
+          return Promise.resolve();
+        }
+        return window.VedGuideTrack.submitLead({
+          name: name,
+          phone: phone,
+          conversion_form: 'mahamantra_unlock_form',
+          source_page: 'mahamantra',
+          landing_path: window.location.pathname + window.location.search,
+          referrer: document.referrer || '',
+          document_referrer: document.referrer || ''
+        });
       }
 
       function setMsg(t, cls) {
@@ -838,7 +853,8 @@
         unlockBtn.disabled = true;
         unlockBtn.textContent = "Unlocking…";
 
-        track("ganpati_lead_submit", { name: name, phone: phone, source_page: "ganpatiji" });
+        upsertMahamantraLead(name, phone);
+        track("ganpati_lead_submit", { source_page: "mahamantra" });
 
         greetNameEl.textContent = "Jai Maa, " + name + " ji!";
         resultSection.style.display = "block";

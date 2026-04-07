@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
 </head>
 <body>
 
@@ -143,11 +144,11 @@
         </a>
 
         <span class="nav-section-label">People</span>
-        <a class="nav-item" href="#/leads" data-panel="leads">
-          <span class="nav-icon">✉</span>Contacts
+        <a class="nav-item" href="#/profiles" data-panel="profiles">
+          <span class="nav-icon">◎</span>Profiles
         </a>
-        <a class="nav-item" href="#/visitors" data-panel="visitors">
-          <span class="nav-icon">◉</span>Site Visitors
+        <a class="nav-item" href="#/leads" data-panel="leads">
+          <span class="nav-icon">✉</span>Leads
         </a>
         <a class="nav-item" href="#/abandoned" data-panel="abandoned">
           <span class="nav-icon">⚠</span>Left Without Paying
@@ -155,7 +156,7 @@
 
         <span class="nav-section-label">Insights</span>
         <a class="nav-item" href="#/analytics" data-panel="analytics">
-          <span class="nav-icon">▲</span>Page Traffic
+          <span class="nav-icon">▲</span>Traffic insights
         </a>
 
         <span class="nav-section-label">System</span>
@@ -194,12 +195,23 @@
             <ul class="dash-config-banner-list" id="dashConfigBannerList"></ul>
             <a class="btn btn--small dash-config-banner-cta" href="#/settings">Open settings</a>
           </div>
+          <div class="card wide dash-realtime-card" id="dashRealtimeCard">
+            <div class="card-label">Live traffic</div>
+            <p class="card-hint">Last 30 minutes — sessions with any tracked event (polls every 45s).</p>
+            <div class="dash-realtime-metrics" id="dashRealtimeMetrics" aria-live="polite">
+              <p class="detail-muted">Loading…</p>
+            </div>
+            <details class="dash-realtime-details">
+              <summary>Recent events</summary>
+              <ul class="dash-realtime-list" id="dashRealtimeList"></ul>
+            </details>
+          </div>
           <div class="primary-metrics-row" id="dashPrimaryRow" aria-live="polite">
             <p class="detail-muted" style="grid-column:1/-1;margin:0;">Connect your admin account and pick a date range to see revenue &amp; conversions.</p>
           </div>
           <div class="expand-actions">
             <button type="button" class="btn btn--small btn--ghost" id="dashToggleHealth" aria-expanded="false">Server health</button>
-            <button type="button" class="btn btn--small btn--ghost" id="dashToggleAllMetrics" aria-expanded="false">All metrics</button>
+            <button type="button" class="btn btn--small btn--ghost" id="dashToggleAllMetrics" aria-expanded="false">Advanced metrics</button>
             <button type="button" class="btn btn--small btn--ghost" id="dashToggleSnapshots" aria-expanded="false">Saved snapshots</button>
             <button type="button" class="btn btn--small btn--ghost" id="dashToggleApiSnap" aria-expanded="false">API snapshot</button>
           </div>
@@ -256,8 +268,17 @@
               </div>
               <p class="filter-card-hint" id="dashRangeHint"></p>
             </div>
-            <div class="card-label">More detail</div>
-            <p class="card-hint" id="analyticsHint">Connect to load numbers.</p>
+            <div class="dash-chart-block" id="dashChartBlock">
+              <div class="ga-chart-head">
+                <span class="ga-chart-title">Page views over time</span>
+                <span class="ga-chart-note detail-muted" id="dashTrafficSeriesNote"></span>
+              </div>
+              <div class="ga-chart-canvas-wrap ga-chart-canvas-wrap--dash">
+                <canvas id="dashTrafficChart" aria-label="Daily page views chart"></canvas>
+              </div>
+            </div>
+            <div class="card-label">Advanced metrics</div>
+            <p class="card-hint" id="analyticsHint">Full breakdown — every event is still stored; this panel is for deep dives.</p>
             <div class="analytics-grid hidden" id="analyticsGrid"></div>
           </div>
 
@@ -277,6 +298,7 @@
         <section class="panel hidden" id="panel-orders" data-panel>
           <p class="panel-intro">All payments received. Filter by date, status, or search by name/phone. Click any row to open full details.</p>
           <div class="primary-metrics-row" id="ordersPrimaryStrip" aria-live="polite"></div>
+          <p class="detail-muted" id="ordersAppliedFilters" style="margin:6px 0 10px;">Filters: default</p>
 
           <div class="filter-toolbar" id="ordersFilters">
             <div class="filter-tool-card filter-tool-card--wide">
@@ -307,7 +329,7 @@
               <div class="filter-tool-card-title">How they found us</div>
               <select class="orders-input orders-input--full" id="ordersFilterAcquisition" aria-label="Acquisition type">
                 <option value="">Any</option>
-                <option value="lead">From saved contact</option>
+                <option value="lead">From saved lead</option>
                 <option value="direct">Direct checkout</option>
               </select>
             </div>
@@ -335,7 +357,7 @@
                   <th title="'From contact' = email/phone was submitted before payment. 'Direct' = guest checkout.">Source</th>
                   <th>Receipt / Razorpay ID</th>
                   <th>Status</th>
-                  <th>Open</th>
+                  <th>Expand</th>
                 </tr>
               </thead>
               <tbody id="ordersTbody"></tbody>
@@ -352,6 +374,7 @@
         <section class="panel hidden" id="panel-customers" data-panel>
           <p class="panel-intro">People who have paid. Click any row to see their full profile and complete site activity.</p>
           <div class="primary-metrics-row" id="customersPrimaryStrip" aria-live="polite"></div>
+          <p class="detail-muted" id="customersAppliedFilters" style="margin:6px 0 10px;">Filters: default</p>
 
           <div class="filter-card">
             <div class="filter-card-head">
@@ -390,7 +413,7 @@
                   <th>Paying?</th>
                   <th>First paid</th>
                   <th>Total spent</th>
-                  <th>Open</th>
+                  <th>Expand</th>
                 </tr>
               </thead>
               <tbody id="customersTbody"></tbody>
@@ -403,15 +426,72 @@
           </div>
         </section>
 
-        <!-- ── CONTACTS (Leads) ───────────────────────────────── -->
+        <!-- ── LEADS ───────────────────────────────── -->
+        <section class="panel hidden" id="panel-profiles" data-panel>
+          <p class="panel-intro">One row per merged person. Summary columns stay compact; use Expand for full journey, linked records, and merge history.</p>
+          <div class="primary-metrics-row" id="profilesPrimaryStrip" aria-live="polite"></div>
+          <p class="detail-muted" id="profilesAppliedFilters" style="margin:6px 0 10px;">Filters: default</p>
+
+          <div class="filter-card">
+            <div class="filter-card-head">
+              <span class="filter-card-title">Last seen</span>
+              <div class="filter-chips" role="group" aria-label="Profile date shortcuts">
+                <button type="button" class="filter-chip" data-date-panel="profiles" data-date-preset="today">Today</button>
+                <button type="button" class="filter-chip" data-date-panel="profiles" data-date-preset="yesterday">Yesterday</button>
+                <button type="button" class="filter-chip" data-date-panel="profiles" data-date-preset="last7">Last 7d</button>
+                <button type="button" class="filter-chip" data-date-panel="profiles" data-date-preset="last30">Last 30d</button>
+              </div>
+            </div>
+            <div class="admin-filters admin-filters--wrap" id="profilesFilters">
+              <input type="search" class="orders-input" id="profilesFilterSearch" placeholder="Search phone, email, name, profile id or linked session id" />
+              <select class="orders-input" id="profilesFilterLifecycle" aria-label="Lifecycle stage">
+                <option value="">Any stage</option>
+                <option value="visitor">Visitor</option>
+                <option value="lead">Lead</option>
+                <option value="checkout_contact">Checkout contact</option>
+                <option value="customer">Customer</option>
+              </select>
+              <span class="detail-muted" style="align-self:center;font-size:12px;">Expand = full detail + timeline</span>
+              <input type="datetime-local" class="orders-input" id="profilesFilterDateFrom" title="Last seen from" />
+              <input type="datetime-local" class="orders-input" id="profilesFilterDateTo" title="Last seen to" />
+              <button type="button" class="btn btn--small" id="profilesFilterApply">Apply</button>
+              <button type="button" class="btn btn--small btn--ghost" id="profilesFilterReset">Reset</button>
+            </div>
+          </div>
+
+          <p class="orders-msg" id="profilesMsg" hidden></p>
+          <div class="table-wrap table-wrap--wide" id="profilesTableWrap" hidden>
+            <table class="data-table data-table--dense" id="profilesTable">
+              <thead>
+                <tr id="profilesTableHeadRow">
+                  <th>Last seen</th>
+                  <th>Contact</th>
+                  <th>Stage</th>
+                  <th>Orders / revenue</th>
+                  <th>Linked</th>
+                  <th>Expand</th>
+                </tr>
+              </thead>
+              <tbody id="profilesTbody"></tbody>
+            </table>
+          </div>
+          <div class="pagination hidden" id="profilesPagination">
+            <button type="button" class="btn btn--small btn--ghost" id="profilesPagePrev">← Prev</button>
+            <span class="pagination-info" id="profilesPageInfo"></span>
+            <button type="button" class="btn btn--small btn--ghost" id="profilesPageNext">Next →</button>
+          </div>
+        </section>
+
+        <!-- ── LEADS ───────────────────────────────── -->
         <section class="panel hidden" id="panel-leads" data-panel>
-          <p class="panel-intro">People who shared their email or phone number. Use "All records" to also include old anonymous-only entries.</p>
+          <p class="panel-intro">People who shared contact details. Default is one row per person (sessions merged); switch to raw to see every submission.</p>
           <div class="primary-metrics-row" id="leadsPrimaryStrip" aria-live="polite"></div>
+          <p class="detail-muted" id="leadsAppliedFilters" style="margin:6px 0 10px;">Filters: default</p>
 
           <div class="filter-card">
             <div class="filter-card-head">
               <span class="filter-card-title">Date range</span>
-              <div class="filter-chips" role="group" aria-label="Contact date shortcuts">
+              <div class="filter-chips" role="group" aria-label="Lead date shortcuts">
                 <button type="button" class="filter-chip" data-date-panel="leads" data-date-preset="today">Today</button>
                 <button type="button" class="filter-chip" data-date-panel="leads" data-date-preset="yesterday">Yesterday</button>
                 <button type="button" class="filter-chip" data-date-panel="leads" data-date-preset="last3">Last 3d</button>
@@ -420,14 +500,18 @@
               </div>
             </div>
             <div class="admin-filters admin-filters--wrap" id="leadsFilters">
-              <input type="search" class="orders-input" id="leadsFilterSearch" placeholder="Search email, phone, name or visit ID" />
+              <input type="search" class="orders-input" id="leadsFilterSearch" placeholder="Search email, phone, name, session, lead id or lead code" />
               <input type="text" class="orders-input" id="leadsFilterUtmSource" placeholder="Traffic source (e.g. google)" />
               <input type="text" class="orders-input" id="leadsFilterUtmMedium" placeholder="Traffic medium (e.g. cpc)" />
               <input type="text" class="orders-input" id="leadsFilterUtmCampaign" placeholder="Campaign name contains…" />
               <input type="text" class="orders-input" id="leadsFilterLeadStatus" placeholder="Contact status" />
-              <select class="orders-input" id="leadsFilterContactsOnly" aria-label="Contact filter">
+              <select class="orders-input" id="leadsFilterContactsOnly" aria-label="Lead filter">
                 <option value="1" selected>Has email or phone</option>
                 <option value="0">All records (legacy)</option>
+              </select>
+              <select class="orders-input" id="leadsFilterGroupBy" aria-label="How to group rows">
+                <option value="1" selected>One row per person (merged)</option>
+                <option value="0">Every submission (raw)</option>
               </select>
               <select class="orders-input" id="leadsFilterConverted" aria-label="Converted filter">
                 <option value="">Converted: any</option>
@@ -458,20 +542,22 @@
           <div class="table-wrap table-wrap--wide" id="leadsTableWrap" hidden>
             <table class="data-table data-table--dense" id="leadsTable">
               <thead>
-                <tr>
+                <tr id="leadsTableHeadRow">
                   <th>Last seen</th>
-                  <th>Visit ID</th>
+                  <th>Lead code</th>
+                  <th>Session ID</th>
                   <th>Email</th>
                   <th>Name</th>
                   <th>Phone</th>
+                  <th>Source page</th>
                   <th>Traffic source</th>
                   <th>Campaign</th>
-                  <th>First page</th>
+                  <th>Landing page</th>
                   <th>Came from</th>
                   <th>Interest score</th>
                   <th>Interest level</th>
                   <th>Status</th>
-                  <th>Open</th>
+                  <th>Expand</th>
                 </tr>
               </thead>
               <tbody id="leadsTbody"></tbody>
@@ -486,8 +572,9 @@
 
         <!-- ── LEFT WITHOUT PAYING (Abandoned) ───────────────────────────────── -->
         <section class="panel hidden" id="panel-abandoned" data-panel>
-          <p class="panel-intro">People who started checkout but didn't complete payment. Phone number is visible in each row — expand to see their full story.</p>
+          <p class="panel-intro">Incomplete checkouts. By default one row per person when linked; expand for each attempt. Switch to raw for one row per checkout session.</p>
           <div class="primary-metrics-row" id="abandonedPrimaryStrip" aria-live="polite"></div>
+          <p class="detail-muted" id="abandonedAppliedFilters" style="margin:6px 0 10px;">Filters: default</p>
 
           <div class="filter-card">
             <div class="filter-card-head">
@@ -501,6 +588,10 @@
               </div>
             </div>
             <div class="admin-filters" id="abandonedFilters">
+              <select class="orders-input" id="abandonedFilterGroupBy" aria-label="How to group rows">
+                <option value="1" selected>One row per person (merged)</option>
+                <option value="0">Every checkout (raw)</option>
+              </select>
               <input type="search" class="orders-input" id="abandonedFilterSearch" placeholder="Visit ID / email / phone" />
               <input type="text" class="orders-input" id="abandonedFilterStage" placeholder="Checkout stage (e.g. form_submit)" />
               <input type="text" class="orders-input" id="abandonedFilterUtmCampaign" placeholder="Campaign name contains…" />
@@ -515,7 +606,7 @@
           <div class="table-wrap table-wrap--wide" id="abandonedTableWrap" hidden>
             <table class="data-table data-table--dense" id="abandonedTable">
               <thead>
-                <tr>
+                <tr id="abandonedTableHeadRow">
                   <th>Last activity</th>
                   <th>Checkout stage</th>
                   <th>Phone</th>
@@ -525,7 +616,7 @@
                   <th>Checkout session</th>
                   <th>Traffic source</th>
                   <th>Paid?</th>
-                  <th>Open</th>
+                  <th>Expand</th>
                 </tr>
               </thead>
               <tbody id="abandonedTbody"></tbody>
@@ -540,7 +631,7 @@
 
         <!-- ── SITE VISITORS ───────────────────────────────── -->
         <section class="panel hidden" id="panel-visitors" data-panel>
-          <p class="panel-intro">Everyone who visited your site — anonymous and identified. A visitor becomes a Contact the moment they share their email or phone.</p>
+          <p class="panel-intro">Site visits. Default is one row per person when a profile link exists; expand for session-level history. Use raw for every browser session.</p>
           <div class="primary-metrics-row" id="visitorsPrimaryStrip" aria-live="polite"></div>
 
           <div class="filter-card">
@@ -554,10 +645,14 @@
               </div>
             </div>
             <div class="admin-filters admin-filters--wrap" id="visitorsFilters">
+              <select class="orders-input" id="visitorsFilterGroupBy" aria-label="How to group rows">
+                <option value="1" selected>One row per person (merged)</option>
+                <option value="0">Every visit session (raw)</option>
+              </select>
               <input type="search" class="orders-input" id="visitorsFilterSearch" placeholder="Search visit ID, page, email or phone" />
               <select class="orders-input" id="visitorsFilterConverted" aria-label="Contact conversion">
-                <option value="">Converted to contact: any</option>
-                <option value="yes">Converted (gave contact info)</option>
+                <option value="">Converted to lead: any</option>
+                <option value="yes">Converted (shared contact details)</option>
                 <option value="no">Anonymous only</option>
               </select>
               <input type="datetime-local" class="orders-input" id="visitorsFilterDateFrom" title="Last seen from" />
@@ -571,13 +666,13 @@
           <div class="table-wrap table-wrap--wide" id="visitorsTableWrap" hidden>
             <table class="data-table data-table--dense" id="visitorsTable">
               <thead>
-                <tr>
+                <tr id="visitorsTableHeadRow">
                   <th>Last seen</th>
                   <th>Visit ID</th>
                   <th>First page</th>
                   <th>Traffic source</th>
-                  <th>Became a contact?</th>
-                  <th>Open</th>
+                  <th>Became a lead?</th>
+                  <th>Expand</th>
                 </tr>
               </thead>
               <tbody id="visitorsTbody"></tbody>
@@ -592,12 +687,22 @@
 
         <!-- ── PAGE TRAFFIC (Analytics) ───────────────────────────────── -->
         <section class="panel hidden" id="panel-analytics" data-panel>
-          <p class="panel-intro">How many people visited each page and how long they stayed. Shows unique visitors and total events per page for the selected period.</p>
+          <header class="ga-report-head">
+            <h2 class="ga-report-title">Traffic</h2>
+            <p class="ga-report-sub detail-muted">Sessions, content, and channels — your data only. <strong>Views</strong> = <code>page_view</code> only (same idea as GA4). <strong>Sessions</strong> = distinct browsers (<code>session_id</code>) that saw the page — not identical to GA4 &quot;Active users&quot;.</p>
+          </header>
           <div class="primary-metrics-row" id="analyticsPrimaryStrip" aria-live="polite"></div>
+          <p class="detail-muted ga-applied-filters" id="analyticsAppliedFilters">Filters: default</p>
 
-          <div class="filter-card">
+          <div class="traffic-insights-tabs" role="tablist" aria-label="Traffic report">
+            <button type="button" class="filter-chip traffic-tab traffic-tab--active" data-analytics-tab="pages" role="tab" aria-selected="true">Pages</button>
+            <button type="button" class="filter-chip traffic-tab" data-analytics-tab="acquisition" role="tab" aria-selected="false">Acquisition</button>
+            <button type="button" class="filter-chip traffic-tab" data-analytics-tab="funnels" role="tab" aria-selected="false">Funnels</button>
+          </div>
+
+          <div class="filter-card ga-filter-card">
             <div class="filter-card-head">
-              <span class="filter-card-title">Time period</span>
+              <span class="filter-card-title">Date range</span>
               <div class="filter-chips" role="group" aria-label="Analytics presets">
                 <button type="button" class="filter-chip" data-date-panel="analytics" data-date-preset="today">Today</button>
                 <button type="button" class="filter-chip" data-date-panel="analytics" data-date-preset="yesterday">Yesterday</button>
@@ -605,42 +710,121 @@
                 <button type="button" class="filter-chip" data-date-panel="analytics" data-date-preset="last30">Last 30d</button>
               </div>
             </div>
-            <div class="admin-filters">
-              <input type="datetime-local" class="orders-input" id="analyticsDateFrom" title="From" />
-              <input type="datetime-local" class="orders-input" id="analyticsDateTo" title="To" />
-              <button type="button" class="btn btn--small" id="analyticsApply">Load pages</button>
+            <div class="ga-filter-primary">
+              <label class="ga-filter-label"><span>From</span>
+                <input type="datetime-local" class="orders-input" id="analyticsDateFrom" title="From" />
+              </label>
+              <label class="ga-filter-label"><span>To</span>
+                <input type="datetime-local" class="orders-input" id="analyticsDateTo" title="To" />
+              </label>
+              <button type="button" class="btn btn--small" id="analyticsApply">Apply</button>
+            </div>
+            <details class="ga-filter-details">
+              <summary class="ga-filter-details-sum">Path &amp; channel filters</summary>
+              <div class="admin-filters admin-filters--wrap ga-filter-details-body">
+                <input type="text" class="orders-input" id="analyticsPathPrefix" placeholder="Path starts with, e.g. /lp/" />
+                <input type="text" class="orders-input" id="acquisitionFilterSource" placeholder="utm_source equals" />
+                <input type="text" class="orders-input" id="acquisitionFilterMedium" placeholder="utm_medium equals" />
+                <input type="text" class="orders-input" id="acquisitionFilterCampaign" placeholder="utm_campaign contains" />
+              </div>
+            </details>
+          </div>
+
+          <div class="ga-charts-grid" id="analyticsChartsRow">
+            <div class="ga-chart-card" id="analyticsChartTrendWrap">
+              <div class="ga-chart-card-title">Page views over time</div>
+              <p class="detail-muted ga-chart-footnote" id="analyticsTrendNote"></p>
+              <div class="ga-chart-canvas-wrap"><canvas id="analyticsTrendChart"></canvas></div>
+            </div>
+            <div class="ga-chart-card" id="analyticsChartBarWrap">
+              <div class="ga-chart-card-title" id="analyticsBarTitle">Top pages</div>
+              <div class="ga-chart-canvas-wrap"><canvas id="analyticsBarChart"></canvas></div>
             </div>
           </div>
 
-          <p class="orders-msg" id="analyticsPagesMsg" hidden></p>
-          <div class="table-wrap table-wrap--wide" id="analyticsPagesWrap" hidden>
-            <table class="data-table data-table--dense" id="analyticsPagesTable">
-              <thead>
-                <tr>
-                  <th>Page / path</th>
-                  <th>Label</th>
-                  <th>Total events</th>
-                  <th>Unique visitors</th>
-                  <th>Daily breakdown</th>
-                </tr>
-              </thead>
-              <tbody id="analyticsPagesTbody"></tbody>
-            </table>
+          <div id="analyticsSectionPages" class="analytics-section">
+            <p class="orders-msg" id="analyticsPagesMsg" hidden></p>
+            <div class="table-wrap table-wrap--wide" id="analyticsPagesWrap" hidden>
+              <table class="data-table data-table--dense" id="analyticsPagesTable">
+                <thead>
+                  <tr>
+                    <th>Page</th>
+                    <th>Views</th>
+                    <th>Sessions</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="analyticsPagesTbody"></tbody>
+              </table>
+            </div>
+
+            <div class="card wide" id="analyticsPageDetailCard" hidden>
+              <div class="card-label" id="analyticsDetailTitle">Page detail</div>
+              <p class="card-hint" id="analyticsDetailHint"></p>
+              <div class="table-wrap" id="analyticsDetailWrap">
+                <table class="data-table data-table--dense">
+                  <thead>
+                    <tr>
+                      <th>Date (IST)</th>
+                      <th>Events</th>
+                    </tr>
+                  </thead>
+                  <tbody id="analyticsDetailTbody"></tbody>
+                </table>
+              </div>
+            </div>
           </div>
 
-          <div class="card wide" id="analyticsPageDetailCard" hidden>
-            <div class="card-label" id="analyticsDetailTitle">Page detail</div>
-            <p class="card-hint" id="analyticsDetailHint"></p>
-            <div class="table-wrap" id="analyticsDetailWrap">
+          <div id="analyticsSectionAcquisition" class="analytics-section hidden">
+            <p class="card-hint" style="margin-bottom:10px;">New visitors in range by UTM; lead counts match source + medium + campaign. Use <strong>Path &amp; channel filters</strong> above, then <strong>Load acquisition</strong>.</p>
+            <div class="ga-acq-actions">
+              <button type="button" class="btn btn--small" id="acquisitionApply">Load acquisition</button>
+            </div>
+            <p class="orders-msg" id="acquisitionMsg" hidden></p>
+            <div class="table-wrap table-wrap--wide" id="acquisitionWrap" hidden>
               <table class="data-table data-table--dense">
                 <thead>
                   <tr>
-                    <th>Date (IST)</th>
-                    <th>Events</th>
+                    <th>Source</th>
+                    <th>Medium</th>
+                    <th>Campaign</th>
+                    <th>Content</th>
+                    <th>Term</th>
+                    <th>New sessions</th>
+                    <th>Leads</th>
+                    <th>Leads paid</th>
                   </tr>
                 </thead>
-                <tbody id="analyticsDetailTbody"></tbody>
+                <tbody id="acquisitionTbody"></tbody>
               </table>
+            </div>
+          </div>
+
+          <div id="analyticsSectionFunnels" class="analytics-section hidden">
+            <p class="card-hint" style="margin-bottom:10px;">Funnel steps are checked in time order per session. Definitions live in <code>server/data/funnels.json</code> (defaults + admin save).</p>
+            <div class="admin-filters admin-filters--wrap">
+              <select class="orders-input" id="funnelSelect" aria-label="Funnel"></select>
+              <button type="button" class="btn btn--small" id="funnelRunBtn">Run funnel</button>
+              <button type="button" class="btn btn--small btn--ghost" id="funnelRefreshListBtn">Refresh list</button>
+            </div>
+            <p class="orders-msg" id="funnelMsg" hidden></p>
+            <div class="card wide hidden" id="funnelResultCard">
+              <div class="card-label" id="funnelResultTitle">Results</div>
+              <p class="card-hint" id="funnelResultHint"></p>
+              <div class="table-wrap">
+                <table class="data-table data-table--dense">
+                  <thead>
+                    <tr>
+                      <th>Step</th>
+                      <th>Kind</th>
+                      <th>Match</th>
+                      <th>Sessions reached</th>
+                      <th>Drop % vs prev</th>
+                    </tr>
+                  </thead>
+                  <tbody id="funnelResultTbody"></tbody>
+                </table>
+              </div>
             </div>
           </div>
         </section>

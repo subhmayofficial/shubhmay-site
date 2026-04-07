@@ -1,5 +1,5 @@
 {
-  "name": "shubhmay-api",
+  "name": "vedguide-api",
   "version": "1.0.0",
   "description": "API + optional static site. Local dev with site: cd server && npm run dev:site (SERVE_STATIC=1). Do not use npm run dev start:site — that does not enable static hosting.",
   "private": true,

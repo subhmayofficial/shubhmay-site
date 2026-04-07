@@ -2,17 +2,170 @@ import { DateTime } from 'luxon';
 import { supabaseRequest, supabaseGetRange, supabaseCountRows, parseContentRangeTotal } from './supabase.js';
 import { strTrim } from './strings.js';
 
+/**
+ * First URL path in the same merged timeline as /api/admin/visitors/:id/timeline
+ * (visitor_events + lead_events when converted), earliest event with a non-empty path.
+ */
+async function firstSitePathFromVisitorTimeline(cfg, row) {
+  if (row?.person_profile_id) {
+    const evs = await profileEventsTimeline(cfg, row.person_profile_id);
+    const touches = timelineFirstAndLastTouch(evs);
+    return touches.firstTouchPath || null;
+  }
+  const visitorId = row?.id;
+  if (!visitorId) return null;
+  const leadId = row.converted_lead_id ? String(row.converted_lead_id) : null;
+  const veUrl =
+    `visitor_events?visitor_id=eq.${encodeURIComponent(String(visitorId))}` +
+    '&select=id,event_type,event_name,path,created_at&order=created_at.asc&limit=500';
+  const reqs = [supabaseRequest(cfg, 'GET', veUrl)];
+  if (leadId) {
+    reqs.push(
+      supabaseRequest(
+        cfg,
+        'GET',
+        `lead_events?lead_id=eq.${encodeURIComponent(leadId)}&select=id,event_type,event_name,stage,path,created_at&order=created_at.asc&limit=500`
+      )
+    );
+  }
+  const results = await Promise.all(reqs);
+  const merged = [];
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
+    if (r.code >= 200 && r.code < 300) {
+      const evs = JSON.parse(r.body || '[]');
+      if (Array.isArray(evs)) {
+        const source = i === 0 ? 'visitor' : 'lead';
+        merged.push(...evs.map((ev) => ({ ...ev, _source: source })));
+      }
+    }
+  }
+  const deduped = dedupeMergedTimelineEvents(merged);
+  for (const ev of deduped) {
+    const p = strTrim(ev.path, 1000);
+    if (p) return p;
+  }
+  return null;
+}
+
 const ADMIN_TZ = 'Asia/Kolkata';
 
 export const ADMIN_ORDERS_SELECT =
-  'id,customer_id,lead_id,abandoned_checkout_id,product_slug,razorpay_order_id,razorpay_payment_id,receipt,amount_paise,currency,payment_status,order_status,dob,tob,birth_place,language,coupon,paid_at,created_at,updated_at,razorpay_notes,customers(name,email,phone,is_paying_customer,first_paid_at,total_spent_paise,created_at),leads!orders_lead_id_fkey(session_id,utm_source,utm_medium,utm_campaign,landing_path,referrer,source_page,lead_status,first_seen_at,last_seen_at),abandoned_checkouts!orders_abandoned_checkout_id_fkey(checkout_session_id,stage,abandoned_at,last_event_at,utm_source,utm_medium,utm_campaign)';
+  'id,customer_id,lead_id,person_profile_id,abandoned_checkout_id,product_slug,razorpay_order_id,razorpay_payment_id,receipt,amount_paise,currency,payment_status,order_status,dob,tob,birth_place,language,coupon,paid_at,created_at,updated_at,razorpay_notes,customers(name,email,phone,is_paying_customer,first_paid_at,total_spent_paise,created_at),leads!orders_lead_id_fkey(session_id,utm_source,utm_medium,utm_campaign,landing_path,referrer,source_page,lead_status,first_seen_at,last_seen_at),abandoned_checkouts!orders_abandoned_checkout_id_fkey(checkout_session_id,stage,abandoned_at,last_event_at,utm_source,utm_medium,utm_campaign),person_profiles(id,canonical_name,canonical_email,canonical_phone,first_touch_path,last_touch_path,lifecycle_stage,total_orders,total_revenue_paise)';
 
 // visitors!leads_visitor_id_fkey — disambiguate from visitors.converted_lead_id → leads (PGRST201)
 export const ADMIN_LEADS_SELECT =
-  'id,session_id,email,name,phone,visitor_id,source_page,landing_path,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term,user_agent,client_language,screen_width,screen_height,lead_status,converted_order_id,first_seen_at,last_seen_at,intent_score,intent_tier,meta,created_at,updated_at,visitors!leads_visitor_id_fkey(id,session_id,converted_lead_id,conversion_at,conversion_source),lead_events(id,session_id,event_type,event_name,stage,path,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term,meta,created_at),orders!orders_lead_id_fkey(id,product_slug,amount_paise,currency,payment_status,order_status,paid_at,created_at,razorpay_order_id,razorpay_payment_id,receipt,coupon),abandoned_checkouts!abandoned_checkouts_lead_id_fkey(id,checkout_session_id,stage,product_slug,amount_paise,currency,last_event_at,abandoned_at,converted_order_id,converted_at,razorpay_order_id,referrer,landing_path),consultancy_bookings!consultancy_bookings_lead_id_fkey(id,plan_code,plan_name,duration_minutes,amount_paise,currency,status,payment_status,slot_start,slot_end,razorpay_order_id,created_at)';
+  'id,session_id,email,name,phone,visitor_id,person_profile_id,source_page,landing_path,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term,user_agent,client_language,screen_width,screen_height,lead_status,converted_order_id,first_seen_at,last_seen_at,intent_score,intent_tier,meta,created_at,updated_at,visitors!leads_visitor_id_fkey(id,session_id,converted_lead_id,conversion_at,conversion_source),lead_events(id,session_id,event_type,event_name,stage,path,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term,meta,created_at),orders!orders_lead_id_fkey(id,product_slug,amount_paise,currency,payment_status,order_status,paid_at,created_at,razorpay_order_id,razorpay_payment_id,receipt,coupon),abandoned_checkouts!abandoned_checkouts_lead_id_fkey(id,checkout_session_id,stage,product_slug,amount_paise,currency,last_event_at,abandoned_at,converted_order_id,converted_at,razorpay_order_id,referrer,landing_path),consultancy_bookings!consultancy_bookings_lead_id_fkey(id,plan_code,plan_name,duration_minutes,amount_paise,currency,status,payment_status,slot_start,slot_end,razorpay_order_id,created_at),person_profiles(id,canonical_name,canonical_email,canonical_phone,first_touch_path,last_touch_path,lead_status,lifecycle_stage,total_orders,total_revenue_paise)';
 
 export const ADMIN_VISITORS_SELECT =
-  'id,session_id,email,name,phone,source_page,landing_path,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term,user_agent,client_language,screen_width,screen_height,first_seen_at,last_seen_at,converted_lead_id,conversion_at,conversion_source,intent_score,intent_tier,meta,created_at,updated_at';
+  'id,session_id,email,name,phone,person_profile_id,source_page,landing_path,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term,user_agent,client_language,screen_width,screen_height,first_seen_at,last_seen_at,converted_lead_id,conversion_at,conversion_source,intent_score,intent_tier,meta,created_at,updated_at,person_profiles(id,canonical_name,canonical_email,canonical_phone,first_touch_path,last_touch_path,lead_status,lifecycle_stage,total_orders,total_revenue_paise)';
+
+export const ADMIN_PROFILES_SELECT =
+  'id,canonical_name,canonical_email,canonical_phone,first_seen_at,last_seen_at,first_touch_path,first_touch_source,first_touch_referrer,last_touch_path,last_touch_source,last_touch_referrer,lead_status,lifecycle_stage,total_orders,total_revenue_paise,merged_session_ids,merged_visitor_ids,merged_lead_ids,merged_checkout_ids,merged_order_ids,merged_booking_ids,meta,created_at,updated_at';
+
+const ADMIN_LEADS_ROLLUP_SELECT =
+  'id,session_id,email,name,phone,person_profile_id,source_page,landing_path,referrer,utm_source,utm_medium,utm_campaign,lead_status,converted_order_id,first_seen_at,last_seen_at,intent_score,intent_tier';
+
+const ADMIN_VISITORS_ROLLUP_SELECT =
+  'id,session_id,email,name,phone,person_profile_id,landing_path,source_page,referrer,utm_source,utm_medium,utm_campaign,first_seen_at,last_seen_at,converted_lead_id,conversion_at,intent_score,intent_tier';
+
+const ADMIN_ABANDONED_ROLLUP_SELECT =
+  'id,checkout_session_id,person_profile_id,lead_id,email,name,phone,product_slug,stage,utm_source,utm_medium,utm_campaign,last_event_at,abandoned_at,converted_order_id';
+
+function queryFlagOn(q, key) {
+  const v = String(q[key] ?? '')
+    .trim()
+    .toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes';
+}
+
+function groupLeadsByPerson(rows) {
+  const map = new Map();
+  for (const row of rows) {
+    const sid = String(row.session_id || '').trim();
+    const key = row.person_profile_id ? `p:${row.person_profile_id}` : sid ? `s:${sid}` : `l:${row.id}`;
+    let g = map.get(key);
+    if (!g) {
+      g = { leads: [], lastMs: -1, primary: null };
+      map.set(key, g);
+    }
+    g.leads.push(row);
+    const t = new Date(row.last_seen_at || 0).getTime();
+    if (t >= g.lastMs) {
+      g.lastMs = t;
+      g.primary = row;
+    }
+  }
+  return [...map.values()]
+    .map((g) => ({
+      rollup: true,
+      person_profile_id: g.primary?.person_profile_id || null,
+      lead_count: g.leads.length,
+      last_seen_at: g.primary?.last_seen_at || null,
+      primary_lead: g.primary,
+      leads: g.leads.slice().sort((a, b) => new Date(b.last_seen_at || 0) - new Date(a.last_seen_at || 0)),
+    }))
+    .sort((a, b) => new Date(b.last_seen_at || 0) - new Date(a.last_seen_at || 0));
+}
+
+function groupVisitorsByPerson(rows) {
+  const map = new Map();
+  for (const row of rows) {
+    const sid = String(row.session_id || '').trim();
+    const key = row.person_profile_id ? `p:${row.person_profile_id}` : sid ? `s:${sid}` : `v:${row.id}`;
+    let g = map.get(key);
+    if (!g) {
+      g = { visitors: [], lastMs: -1, primary: null };
+      map.set(key, g);
+    }
+    g.visitors.push(row);
+    const t = new Date(row.last_seen_at || 0).getTime();
+    if (t >= g.lastMs) {
+      g.lastMs = t;
+      g.primary = row;
+    }
+  }
+  return [...map.values()]
+    .map((g) => ({
+      rollup: true,
+      person_profile_id: g.primary?.person_profile_id || null,
+      visitor_count: g.visitors.length,
+      last_seen_at: g.primary?.last_seen_at || null,
+      primary_visitor: g.primary,
+      visitors: g.visitors.slice().sort((a, b) => new Date(b.last_seen_at || 0) - new Date(a.last_seen_at || 0)),
+    }))
+    .sort((a, b) => new Date(b.last_seen_at || 0) - new Date(a.last_seen_at || 0));
+}
+
+function groupAbandonedByPerson(rows) {
+  const map = new Map();
+  for (const row of rows) {
+    const cs = String(row.checkout_session_id || '').trim();
+    const sid = String(row.session_id || '').trim();
+    const key = row.person_profile_id ? `p:${row.person_profile_id}` : cs ? `c:${cs}` : sid ? `s:${sid}` : `a:${row.id}`;
+    let g = map.get(key);
+    if (!g) {
+      g = { rows: [], lastMs: -1, primary: null };
+      map.set(key, g);
+    }
+    g.rows.push(row);
+    const t = new Date(row.last_event_at || 0).getTime();
+    if (t >= g.lastMs) {
+      g.lastMs = t;
+      g.primary = row;
+    }
+  }
+  return [...map.values()]
+    .map((g) => ({
+      rollup: true,
+      person_profile_id: g.primary?.person_profile_id || null,
+      checkout_count: g.rows.length,
+      last_event_at: g.primary?.last_event_at || null,
+      primary_checkout: g.primary,
+      abandoned_rows: g.rows.slice().sort((a, b) => new Date(b.last_event_at || 0) - new Date(a.last_event_at || 0)),
+    }))
+    .sort((a, b) => new Date(b.last_event_at || 0) - new Date(a.last_event_at || 0));
+}
 
 /** Drop duplicate rows when the same event was stored on visitor_events and lead_events (legacy data). */
 function dedupeMergedTimelineEvents(merged) {
@@ -38,6 +191,82 @@ function dedupeMergedTimelineEvents(merged) {
     out.push(ev);
   }
   return out;
+}
+
+function timelineFirstAndLastTouch(events) {
+  const deduped = dedupeMergedTimelineEvents(events || []);
+  const withPath = deduped.filter((ev) => strTrim(ev.path, 1000));
+  const first = withPath[0] || null;
+  const last = withPath[withPath.length - 1] || null;
+  return {
+    firstTouchPath: first?.path || null,
+    firstTouchSource: first?.meta?.page || null,
+    firstTouchReferrer: first?.referrer || null,
+    lastTouchPath: last?.path || null,
+    lastTouchSource: last?.meta?.page || null,
+    lastTouchReferrer: last?.referrer || null,
+  };
+}
+
+function deriveDropOffs(events, timeoutMinutes = 10) {
+  const out = [];
+  const sorted = (events || [])
+    .filter((ev) => ev && ev.meta && ev.meta.funnel && (ev.meta.step_name || ev.stage || ev.event_name))
+    .slice()
+    .sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+  for (let i = 0; i < sorted.length; i++) {
+    const cur = sorted[i];
+    const curFunnel = String(cur.meta?.funnel || '');
+    const curStep = String(cur.meta?.step_name || cur.stage || cur.event_name || '');
+    const curIdx = Number(cur.meta?.step_index ?? -1);
+    if (!curFunnel || !curStep || Number.isNaN(curIdx) || curIdx < 0) continue;
+    let advanced = false;
+    for (let j = i + 1; j < sorted.length; j++) {
+      const next = sorted[j];
+      if (String(next.meta?.funnel || '') !== curFunnel) continue;
+      const nextIdx = Number(next.meta?.step_index ?? -1);
+      const dtMin = (new Date(next.created_at || 0) - new Date(cur.created_at || 0)) / 60000;
+      if (dtMin > timeoutMinutes) break;
+      if (!Number.isNaN(nextIdx) && nextIdx > curIdx) {
+        advanced = true;
+        break;
+      }
+    }
+    if (!advanced) {
+      out.push({
+        funnel: curFunnel,
+        step_name: curStep,
+        step_index: curIdx,
+        created_at: cur.created_at,
+        path: cur.path || null,
+        timeout_minutes: timeoutMinutes,
+      });
+    }
+  }
+  return out;
+}
+
+async function profileEventsTimeline(cfg, profileId, beforeIso = null) {
+  const pid = String(profileId || '').trim();
+  if (!pid) return [];
+  const cutoff = beforeIso ? `&created_at=lte.${encodeURIComponent(String(beforeIso))}` : '';
+  const [ve, le] = await Promise.all([
+    supabaseRequest(
+      cfg,
+      'GET',
+      `visitor_events?person_profile_id=eq.${encodeURIComponent(pid)}&select=id,session_id,event_type,event_name,path,referrer,document_referrer,utm_source,utm_medium,utm_campaign,meta,created_at${cutoff}&order=created_at.asc&limit=5000`
+    ),
+    supabaseRequest(
+      cfg,
+      'GET',
+      `lead_events?person_profile_id=eq.${encodeURIComponent(pid)}&select=id,session_id,event_type,event_name,stage,path,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term,meta,created_at${cutoff}&order=created_at.asc&limit=5000`
+    ),
+  ]);
+  const visitorEvents = (JSON.parse(ve.body || '[]') || []).map((e) => ({ ...e, _source: 'visitor' }));
+  const leadEvents = (JSON.parse(le.body || '[]') || []).map((e) => ({ ...e, _source: 'lead' }));
+  return dedupeMergedTimelineEvents(
+    [...visitorEvents, ...leadEvents].sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0))
+  );
 }
 
 function isoDayBoundsIst() {
@@ -173,6 +402,22 @@ function buildCustomersFilterQs(q) {
   return parts.length ? `&${parts.join('&')}` : '';
 }
 
+/** Normalize pasted lead UUID (with or without hyphens) for id=eq filter. */
+function normalizeLeadUuidSearch(raw) {
+  const t = String(raw ?? '')
+    .trim()
+    .replace(/\s+/g, '');
+  if (!t) return null;
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t)) {
+    return t.toLowerCase();
+  }
+  const compact = t.replace(/-/g, '');
+  if (/^[0-9a-f]{32}$/i.test(compact)) {
+    return `${compact.slice(0, 8)}-${compact.slice(8, 12)}-${compact.slice(12, 16)}-${compact.slice(16, 20)}-${compact.slice(20, 32)}`.toLowerCase();
+  }
+  return null;
+}
+
 function buildLeadsFilterQs(q) {
   const parts = [];
   const s = (v) => String(v ?? '').trim();
@@ -188,8 +433,20 @@ function buildLeadsFilterQs(q) {
   if (['yes', '1', 'true'].includes(conv)) parts.push('converted_order_id=not.is.null');
   else if (['no', '0', 'false'].includes(conv)) parts.push('converted_order_id=is.null');
   if (s(q.search)) {
-    const x = encodeURIComponent(s(q.search));
-    parts.push(`or=(email.ilike.*${x}*,session_id.ilike.*${x}*,phone.ilike.*${x}*,name.ilike.*${x}*)`);
+    const raw = s(q.search);
+    const x = encodeURIComponent(raw);
+    const orParts = [
+      `email.ilike.*${x}*`,
+      `session_id.ilike.*${x}*`,
+      `phone.ilike.*${x}*`,
+      `name.ilike.*${x}*`,
+      `id_text.ilike.*${x}*`,
+    ];
+    const uuidEq = normalizeLeadUuidSearch(raw);
+    if (uuidEq) {
+      orParts.push(`id.eq.${encodeURIComponent(uuidEq)}`);
+    }
+    parts.push(`or=(${orParts.join(',')})`);
   }
   const it = s(q.intent_tier).toLowerCase();
   if (it === 'high' || it === 'medium' || it === 'low') {
@@ -264,6 +521,31 @@ function buildAbandonedFilterQs(q) {
   return parts.length ? `&${parts.join('&')}` : '';
 }
 
+function buildProfilesFilterQs(q) {
+  const parts = [];
+  const s = (v) => String(v ?? '').trim();
+  // Admin Profiles should only show contact-known people.
+  parts.push('or=(canonical_email.not.is.null,canonical_phone.not.is.null)');
+  if (s(q.search)) {
+    const raw = s(q.search);
+    const x = encodeURIComponent(raw);
+    parts.push(
+      `or=(canonical_email.ilike.*${x}*,canonical_phone.ilike.*${x}*,canonical_name.ilike.*${x}*,id_text.ilike.*${x}*,merged_session_ids_text.ilike.*${x}*)`
+    );
+  }
+  if (s(q.lifecycle_stage)) parts.push(`lifecycle_stage=eq.${encodeURIComponent(s(q.lifecycle_stage))}`);
+  const df = s(q.date_from);
+  const dt = s(q.date_to);
+  if (df && dt) {
+    parts.push(`and=(last_seen_at.gte.${encodeURIComponent(df)},last_seen_at.lte.${encodeURIComponent(dt)})`);
+  } else if (df) {
+    parts.push(`last_seen_at=gte.${encodeURIComponent(df)}`);
+  } else if (dt) {
+    parts.push(`last_seen_at=lte.${encodeURIComponent(dt)}`);
+  }
+  return parts.length ? `&${parts.join('&')}` : '';
+}
+
 export async function adminListOrders(cfg, q) {
   if (!cfg.supabaseUrl || !cfg.serviceRoleKey) {
     return { ok: false, error: 'Supabase not configured' };
@@ -327,7 +609,7 @@ export async function adminListCustomers(cfg, q) {
   const pg = pageFromQuery(q);
   const filter = buildCustomersFilterQs(q);
   const sel =
-    'id,email,name,phone,is_paying_customer,first_paid_at,total_spent_paise,notes,meta,created_at,updated_at';
+    'id,email,name,phone,person_profile_id,is_paying_customer,first_paid_at,total_spent_paise,notes,meta,created_at,updated_at';
   const path = `customers?select=${encodeURIComponent(sel)}&order=created_at.desc${filter}`;
   const r = await supabaseGetRange(cfg, path, pg.range);
   if (r.code >= 200 && r.code < 300) {
@@ -343,13 +625,13 @@ export async function adminListCustomers(cfg, q) {
   return { ok: false, error: (r.body || '').slice(0, 400) };
 }
 
-export async function adminListLeads(cfg, q) {
+export async function adminListProfiles(cfg, q) {
   if (!cfg.supabaseUrl || !cfg.serviceRoleKey) {
     return { ok: false, error: 'Supabase not configured' };
   }
   const pg = pageFromQuery(q);
-  const filter = buildLeadsFilterQs(q);
-  const path = `leads?select=${encodeURIComponent(ADMIN_LEADS_SELECT)}&order=last_seen_at.desc${filter}`;
+  const filter = buildProfilesFilterQs(q);
+  const path = `person_profiles?select=${encodeURIComponent(ADMIN_PROFILES_SELECT)}&order=last_seen_at.desc${filter}`;
   const r = await supabaseGetRange(cfg, path, pg.range);
   if (r.code >= 200 && r.code < 300) {
     const rows = JSON.parse(r.body || '[]');
@@ -364,14 +646,129 @@ export async function adminListLeads(cfg, q) {
   return { ok: false, error: (r.body || '').slice(0, 400) };
 }
 
+export async function adminProfileDetail(cfg, profileId) {
+  if (!cfg.supabaseUrl || !cfg.serviceRoleKey) {
+    return { ok: false, error: 'Supabase not configured' };
+  }
+  const id = String(profileId || '').trim();
+  if (!id) return { ok: false, error: 'profile id required' };
+  const pr = await supabaseRequest(
+    cfg,
+    'GET',
+    `person_profiles?id=eq.${encodeURIComponent(id)}&select=${encodeURIComponent(ADMIN_PROFILES_SELECT)}&limit=1`
+  );
+  if (pr.code < 200 || pr.code >= 300) return { ok: false, error: (pr.body || '').slice(0, 300) };
+  const rows = JSON.parse(pr.body || '[]');
+  const profile = Array.isArray(rows) && rows[0] ? rows[0] : null;
+  if (!profile) return { ok: false, error: 'Profile not found' };
+
+  const [visitors, leads, abandoned, orders, bookings, customers] = await Promise.all([
+    supabaseRequest(cfg, 'GET', `visitors?person_profile_id=eq.${encodeURIComponent(id)}&select=${encodeURIComponent(ADMIN_VISITORS_SELECT)}&order=last_seen_at.desc&limit=200`),
+    supabaseRequest(cfg, 'GET', `leads?person_profile_id=eq.${encodeURIComponent(id)}&select=${encodeURIComponent(ADMIN_LEADS_SELECT)}&order=last_seen_at.desc&limit=200`),
+    supabaseRequest(cfg, 'GET', `abandoned_checkouts?person_profile_id=eq.${encodeURIComponent(id)}&select=id,checkout_session_id,lead_id,email,name,phone,product_slug,stage,amount_paise,currency,last_event_at,abandoned_at,converted_order_id,converted_at,landing_path,referrer,utm_source,utm_medium,utm_campaign,created_at,updated_at&order=last_event_at.desc&limit=200`),
+    supabaseRequest(cfg, 'GET', `orders?person_profile_id=eq.${encodeURIComponent(id)}&select=${encodeURIComponent(ADMIN_ORDERS_SELECT)}&order=paid_at.desc&limit=200`),
+    supabaseRequest(cfg, 'GET', `consultancy_bookings?person_profile_id=eq.${encodeURIComponent(id)}&select=id,lead_id,session_id,name,email,phone,topic,slot_start,slot_end,status,payment_status,plan_code,plan_name,duration_minutes,amount_paise,currency,razorpay_order_id,razorpay_payment_id,created_at,updated_at&order=created_at.desc&limit=200`),
+    supabaseRequest(cfg, 'GET', `customers?person_profile_id=eq.${encodeURIComponent(id)}&select=id,email,name,phone,is_paying_customer,first_paid_at,total_spent_paise,notes,meta,created_at,updated_at&limit=50`),
+  ]);
+
+  const events = await profileEventsTimeline(cfg, id);
+  const touches = timelineFirstAndLastTouch(events);
+  const drops = deriveDropOffs(events);
+
+  return {
+    ok: true,
+    profile: { ...profile, ...touches, latest_drop: drops[drops.length - 1] || null },
+    visitors: JSON.parse(visitors.body || '[]') || [],
+    leads: JSON.parse(leads.body || '[]') || [],
+    abandonedCheckouts: JSON.parse(abandoned.body || '[]') || [],
+    orders: JSON.parse(orders.body || '[]') || [],
+    consultancyBookings: JSON.parse(bookings.body || '[]') || [],
+    customers: JSON.parse(customers.body || '[]') || [],
+    events,
+    drops,
+  };
+}
+
+export async function adminListLeads(cfg, q) {
+  if (!cfg.supabaseUrl || !cfg.serviceRoleKey) {
+    return { ok: false, error: 'Supabase not configured' };
+  }
+  const pg = pageFromQuery(q);
+  const groupByPerson = queryFlagOn(q, 'group_by_person');
+  if (groupByPerson) {
+    const cap = 5000;
+    const filter = buildLeadsFilterQs(q);
+    const path = `leads?select=${encodeURIComponent(ADMIN_LEADS_ROLLUP_SELECT)}&order=last_seen_at.desc${filter}&limit=${cap}`;
+    const r = await supabaseRequest(cfg, 'GET', path);
+    if (r.code < 200 || r.code >= 300) {
+      return { ok: false, error: (r.body || '').slice(0, 400) };
+    }
+    const list = JSON.parse(r.body || '[]');
+    const raw = Array.isArray(list) ? list : [];
+    const groups = groupLeadsByPerson(raw);
+    const start = (pg.page - 1) * pg.perPage;
+    const pageRows = groups.slice(start, start + pg.perPage);
+    return {
+      ok: true,
+      rows: pageRows,
+      total: groups.length,
+      page: pg.page,
+      perPage: pg.perPage,
+      grouped: true,
+      truncated: raw.length >= cap,
+    };
+  }
+
+  const filter = buildLeadsFilterQs(q);
+  const path = `leads?select=${encodeURIComponent(ADMIN_LEADS_SELECT)}&order=last_seen_at.desc${filter}`;
+  const r = await supabaseGetRange(cfg, path, pg.range);
+  if (r.code >= 200 && r.code < 300) {
+    const rows = JSON.parse(r.body || '[]');
+    return {
+      ok: true,
+      rows: Array.isArray(rows) ? rows : [],
+      total: parseContentRangeTotal(r.contentRange),
+      page: pg.page,
+      perPage: pg.perPage,
+      grouped: false,
+    };
+  }
+  return { ok: false, error: (r.body || '').slice(0, 400) };
+}
+
 export async function adminListAbandoned(cfg, q) {
   if (!cfg.supabaseUrl || !cfg.serviceRoleKey) {
     return { ok: false, error: 'Supabase not configured' };
   }
   const pg = pageFromQuery(q);
+  const groupByPerson = queryFlagOn(q, 'group_by_person');
+  if (groupByPerson) {
+    const cap = 5000;
+    const filter = buildAbandonedFilterQs(q);
+    const path = `abandoned_checkouts?select=${encodeURIComponent(ADMIN_ABANDONED_ROLLUP_SELECT)}&order=last_event_at.desc${filter}&limit=${cap}`;
+    const r = await supabaseRequest(cfg, 'GET', path);
+    if (r.code < 200 || r.code >= 300) {
+      return { ok: false, error: (r.body || '').slice(0, 400) };
+    }
+    const list = JSON.parse(r.body || '[]');
+    const raw = Array.isArray(list) ? list : [];
+    const groups = groupAbandonedByPerson(raw);
+    const start = (pg.page - 1) * pg.perPage;
+    const pageRows = groups.slice(start, start + pg.perPage);
+    return {
+      ok: true,
+      rows: pageRows,
+      total: groups.length,
+      page: pg.page,
+      perPage: pg.perPage,
+      grouped: true,
+      truncated: raw.length >= cap,
+    };
+  }
+
   const filter = buildAbandonedFilterQs(q);
   const sel =
-    'id,checkout_session_id,lead_id,email,name,phone,product_slug,stage,razorpay_order_id,amount_paise,currency,utm_source,utm_medium,utm_campaign,utm_content,utm_term,referrer,landing_path,last_event_at,abandoned_at,converted_order_id,converted_at,meta,created_at,updated_at,leads(session_id,utm_campaign,utm_source,utm_medium,landing_path)';
+    'id,checkout_session_id,lead_id,email,name,phone,product_slug,stage,razorpay_order_id,amount_paise,currency,utm_source,utm_medium,utm_campaign,utm_content,utm_term,referrer,landing_path,last_event_at,abandoned_at,converted_order_id,converted_at,meta,created_at,updated_at,person_profile_id,leads(session_id,utm_campaign,utm_source,utm_medium,landing_path)';
   const path = `abandoned_checkouts?select=${encodeURIComponent(sel)}&order=last_event_at.desc${filter}`;
   const r = await supabaseGetRange(cfg, path, pg.range);
   if (r.code >= 200 && r.code < 300) {
@@ -382,6 +779,7 @@ export async function adminListAbandoned(cfg, q) {
       total: parseContentRangeTotal(r.contentRange),
       page: pg.page,
       perPage: pg.perPage,
+      grouped: false,
     };
   }
   return { ok: false, error: (r.body || '').slice(0, 400) };
@@ -417,7 +815,7 @@ export async function adminOrderPrePurchaseTimeline(cfg, orderId) {
   }
   const id = String(orderId).trim();
   if (!id) return { ok: false, error: 'order id required' };
-  const oq = `orders?id=eq.${encodeURIComponent(id)}&select=id,lead_id,paid_at,created_at,product_slug&limit=1`;
+  const oq = `orders?id=eq.${encodeURIComponent(id)}&select=id,lead_id,person_profile_id,paid_at,created_at,product_slug&limit=1`;
   const or = await supabaseRequest(cfg, 'GET', oq);
   if (or.code < 200 || or.code >= 300) {
     return { ok: false, error: (or.body || '').slice(0, 300) };
@@ -427,14 +825,20 @@ export async function adminOrderPrePurchaseTimeline(cfg, orderId) {
   if (!order) return { ok: false, error: 'Order not found' };
   const paidAt = order.paid_at ?? order.created_at;
   const leadId = order.lead_id ?? null;
+  const personProfileId = order.person_profile_id ?? null;
   const out = {
     ok: true,
     orderId: order.id,
     leadId,
+    personProfileId,
     paidAt,
     acquisition: leadId ? 'lead_attributed' : 'direct_purchase',
     events: [],
   };
+  if (personProfileId) {
+    out.events = await profileEventsTimeline(cfg, personProfileId, paidAt);
+    return out;
+  }
   if (!leadId) return out;
 
   let visitorId = null;
@@ -482,6 +886,35 @@ export async function adminOrderPrePurchaseTimeline(cfg, orderId) {
   return out;
 }
 
+/** Union of session_id across visitor_events + lead_events for page_view in range (paginated; may truncate). */
+async function distinctSessionsFromPageViews(cfg, startIso, endIso, maxPerTable = 15000) {
+  const pvWin = `and=(created_at.gte.${encodeURIComponent(startIso)},created_at.lt.${encodeURIComponent(endIso)},event_name.eq.page_view)`;
+  const set = new Set();
+  let truncated = false;
+  for (const table of ['visitor_events', 'lead_events']) {
+    let offset = 0;
+    const limit = 2000;
+    while (offset < maxPerTable) {
+      const url = `${table}?select=session_id&${pvWin}&order=created_at.asc&limit=${limit}&offset=${offset}`;
+      const r = await supabaseRequest(cfg, 'GET', url);
+      if (r.code < 200 || r.code >= 300) break;
+      const rows = JSON.parse(r.body || '[]');
+      if (!Array.isArray(rows) || rows.length === 0) break;
+      for (const row of rows) {
+        const sid = String(row.session_id || '').trim();
+        if (sid) set.add(sid);
+      }
+      if (rows.length < limit) break;
+      offset += limit;
+      if (offset >= maxPerTable) {
+        truncated = true;
+        break;
+      }
+    }
+  }
+  return { count: set.size, truncated };
+}
+
 export async function adminGetAnalytics(cfg, q) {
   if (!cfg.supabaseUrl || !cfg.serviceRoleKey) {
     return { ok: false, error: 'Supabase not configured' };
@@ -519,6 +952,7 @@ export async function adminGetAnalytics(cfg, q) {
   const allLeads = await supabaseCountRows(cfg, 'leads?select=id');
   const allCust = await supabaseCountRows(cfg, 'customers?select=id');
   const allVisitors = await supabaseCountRows(cfg, 'visitors?select=id');
+  const allProfiles = await supabaseCountRows(cfg, 'person_profiles?select=id');
 
   const visitorsPath = `visitors?select=id&and=(first_seen_at.gte.${encodeURIComponent(startIso)},first_seen_at.lt.${encodeURIComponent(endIso)})`;
   const visitorsNew = await supabaseCountRows(cfg, visitorsPath);
@@ -530,8 +964,11 @@ export async function adminGetAnalytics(cfg, q) {
   const intentMedium = await supabaseCountRows(cfg, `leads?select=id&${lsWin}&intent_tier=eq.medium`);
   const intentLow = await supabaseCountRows(cfg, `leads?select=id&${lsWin}&intent_tier=eq.low`);
 
-  const pageViewsQ = `lead_events?select=id&and=(created_at.gte.${encodeURIComponent(startIso)},created_at.lt.${encodeURIComponent(endIso)},event_name.eq.page_view)`;
-  const pageViewsTotal = await supabaseCountRows(cfg, pageViewsQ);
+  const pvWin = `and=(created_at.gte.${encodeURIComponent(startIso)},created_at.lt.${encodeURIComponent(endIso)},event_name.eq.page_view)`;
+  const pageViewsLead = await supabaseCountRows(cfg, `lead_events?select=id&${pvWin}`);
+  const pageViewsVisitor = await supabaseCountRows(cfg, `visitor_events?select=id&${pvWin}`);
+  const pageViewsTotal = pageViewsLead + pageViewsVisitor;
+  const uniquePv = await distinctSessionsFromPageViews(cfg, startIso, endIso);
 
   const visitorsActiveQ = `visitors?select=id&and=(last_seen_at.gte.${encodeURIComponent(startIso)},last_seen_at.lt.${encodeURIComponent(endIso)})`;
   const visitorsActiveInPeriod = await supabaseCountRows(cfg, visitorsActiveQ);
@@ -541,6 +978,32 @@ export async function adminGetAnalytics(cfg, q) {
   const abandonedConvertedLater = await supabaseCountRows(
     cfg,
     `abandoned_checkouts?select=id&${abWin}&converted_order_id=not.is.null`
+  );
+
+  const profilesActive = await supabaseCountRows(
+    cfg,
+    `person_profiles?select=id&and=(last_seen_at.gte.${encodeURIComponent(startIso)},last_seen_at.lt.${encodeURIComponent(endIso)})`
+  );
+  const profilesCustomers = await supabaseCountRows(
+    cfg,
+    `person_profiles?select=id&lifecycle_stage=eq.customer&and=(last_seen_at.gte.${encodeURIComponent(startIso)},last_seen_at.lt.${encodeURIComponent(endIso)})`
+  );
+  const [leadDropSeed, visitorDropSeed] = await Promise.all([
+    supabaseRequest(
+      cfg,
+      'GET',
+      `lead_events?select=session_id,event_type,event_name,stage,path,meta,created_at&and=(created_at.gte.${encodeURIComponent(startIso)},created_at.lt.${encodeURIComponent(endIso)})&limit=5000`
+    ),
+    supabaseRequest(
+      cfg,
+      'GET',
+      `visitor_events?select=session_id,event_type,event_name,path,meta,created_at&and=(created_at.gte.${encodeURIComponent(startIso)},created_at.lt.${encodeURIComponent(endIso)})&limit=5000`
+    ),
+  ]);
+  const derivedDrops = deriveDropOffs(
+    []
+      .concat((JSON.parse(leadDropSeed.body || '[]') || []).map((e) => ({ ...e, _source: 'lead' })))
+      .concat((JSON.parse(visitorDropSeed.body || '[]') || []).map((e) => ({ ...e, _source: 'visitor' })))
   );
 
   const period = {
@@ -555,8 +1018,15 @@ export async function adminGetAnalytics(cfg, q) {
     visitorsNew,
     visitorsActiveInPeriod,
     pageViewsTotal,
+    pageViewsLeadEvents: pageViewsLead,
+    pageViewsVisitorEvents: pageViewsVisitor,
+    uniqueSessionsPageViews: uniquePv.count,
+    uniqueSessionsPageViewsTruncated: uniquePv.truncated,
     abandonedCheckoutSessions,
     abandonedLaterPaid: abandonedConvertedLater,
+    profilesActive,
+    customerProfilesActive: profilesCustomers,
+    funnelDropOffs: derivedDrops.length,
     visitorsConvertedToLead,
     visitorToLeadRatePercent:
       visitorsNew > 0 ? Math.round((visitorsConvertedToLead / visitorsNew) * 1000) / 10 : 0,
@@ -580,6 +1050,7 @@ export async function adminGetAnalytics(cfg, q) {
       leads: allLeads,
       customers: allCust,
       visitors: allVisitors,
+      profiles: allProfiles,
     },
   };
 }
@@ -620,17 +1091,73 @@ export async function adminListVisitors(cfg, q) {
     return { ok: false, error: 'Supabase not configured' };
   }
   const pg = pageFromQuery(q);
+  const groupByPerson = queryFlagOn(q, 'group_by_person');
+  if (groupByPerson) {
+    const cap = 5000;
+    const filter = buildVisitorsFilterQs(q);
+    const path = `visitors?select=${encodeURIComponent(ADMIN_VISITORS_ROLLUP_SELECT)}&order=last_seen_at.desc${filter}&limit=${cap}`;
+    const r = await supabaseRequest(cfg, 'GET', path);
+    if (r.code < 200 || r.code >= 300) {
+      return { ok: false, error: (r.body || '').slice(0, 400) };
+    }
+    const list = JSON.parse(r.body || '[]');
+    const raw = Array.isArray(list) ? list : [];
+    const groups = groupVisitorsByPerson(raw);
+    const start = (pg.page - 1) * pg.perPage;
+    const pageGroups = groups.slice(start, start + pg.perPage);
+    const enriched = await Promise.all(
+      pageGroups.map(async (g) => {
+        const row = g.primary_visitor;
+        if (!row) return g;
+        try {
+          const firstPath = await firstSitePathFromVisitorTimeline(cfg, row);
+          if (firstPath) {
+            return {
+              ...g,
+              primary_visitor: { ...row, landing_path: firstPath },
+            };
+          }
+        } catch {
+          /* keep */
+        }
+        return g;
+      })
+    );
+    return {
+      ok: true,
+      rows: enriched,
+      total: groups.length,
+      page: pg.page,
+      perPage: pg.perPage,
+      grouped: true,
+      truncated: raw.length >= cap,
+    };
+  }
+
   const filter = buildVisitorsFilterQs(q);
   const path = `visitors?select=${encodeURIComponent(ADMIN_VISITORS_SELECT)}&order=last_seen_at.desc${filter}`;
   const r = await supabaseGetRange(cfg, path, pg.range);
   if (r.code >= 200 && r.code < 300) {
     const rows = JSON.parse(r.body || '[]');
+    const list = Array.isArray(rows) ? rows : [];
+    const enriched = await Promise.all(
+      list.map(async (row) => {
+        try {
+          const firstPath = await firstSitePathFromVisitorTimeline(cfg, row);
+          if (firstPath) return { ...row, landing_path: firstPath };
+        } catch {
+          /* keep row.landing_path */
+        }
+        return row;
+      })
+    );
     return {
       ok: true,
-      rows: Array.isArray(rows) ? rows : [],
+      rows: enriched,
       total: parseContentRangeTotal(r.contentRange),
       page: pg.page,
       perPage: pg.perPage,
+      grouped: false,
     };
   }
   return { ok: false, error: (r.body || '').slice(0, 400) };
@@ -650,6 +1177,17 @@ export async function adminVisitorTimeline(cfg, visitorId) {
   const vrows = JSON.parse(vr.body || '[]');
   const visitor = Array.isArray(vrows) && vrows[0] ? vrows[0] : null;
   if (!visitor) return { ok: false, error: 'Visitor not found' };
+
+  if (visitor.person_profile_id) {
+    const events = await profileEventsTimeline(cfg, visitor.person_profile_id);
+    return {
+      ok: true,
+      visitor,
+      visitorEvents: events.filter((e) => e._source === 'visitor'),
+      leadEvents: events.filter((e) => e._source === 'lead'),
+      touches: timelineFirstAndLastTouch(events),
+    };
+  }
 
   const evUrl = `visitor_events?visitor_id=eq.${encodeURIComponent(id)}&select=id,event_type,event_name,path,referrer,meta,created_at&order=created_at.asc&limit=2000`;
   const er = await supabaseRequest(cfg, 'GET', evUrl);
@@ -672,7 +1210,13 @@ export async function adminVisitorTimeline(cfg, visitorId) {
     }
   }
 
-  return { ok: true, visitor, visitorEvents, leadEvents };
+  return { ok: true, visitor, visitorEvents, leadEvents, touches: timelineFirstAndLastTouch(
+    dedupeMergedTimelineEvents(
+      visitorEvents
+        .map((e) => ({ ...e, _source: 'visitor' }))
+        .concat(leadEvents.map((e) => ({ ...e, _source: 'lead' })))
+    )
+  ) };
 }
 
 /** Prior abandon sessions + conversion label for admin abandoned-checkout expand. */
@@ -778,6 +1322,11 @@ export async function adminCustomerActivityTimeline(cfg, customerId) {
   const customer = Array.isArray(crows) && crows[0] ? crows[0] : null;
   if (!customer) return { ok: false, error: 'Customer not found' };
 
+  if (customer.person_profile_id) {
+    const events = await profileEventsTimeline(cfg, customer.person_profile_id);
+    return { ok: true, customer, lead: null, events };
+  }
+
   const em = String(customer.email || '').trim().toLowerCase();
   const ph = String(customer.phone || '').replace(/\s+/g, '');
 
@@ -872,4 +1421,15 @@ export async function adminCustomerActivityTimeline(cfg, customerId) {
   );
 
   return { ok: true, customer, lead, events: merged };
+}
+
+export async function adminRebuildProfilesNow(cfg) {
+  if (!cfg.supabaseUrl || !cfg.serviceRoleKey) {
+    return { ok: false, error: 'Supabase not configured' };
+  }
+  const r = await supabaseRequest(cfg, 'POST', 'rpc/rebuild_profiles_now');
+  if (r.code >= 200 && r.code < 300) {
+    return { ok: true };
+  }
+  return { ok: false, error: (r.body || '').slice(0, 500) };
 }
