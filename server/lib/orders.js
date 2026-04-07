@@ -240,6 +240,7 @@ export async function upsertPaidOrder(cfg, razorpayOrderId, razorpayPaymentId) {
     order_status: 'new',
     dob: parseDob(notes.dob),
     tob: parseTob(notes.tob),
+    gender: notes.gender != null ? strTrim(String(notes.gender), 32) : null,
     birth_place: notes.birth_place != null ? strTrim(String(notes.birth_place), 500) : null,
     language: notes.language != null ? strTrim(String(notes.language), 64) : null,
     coupon: notes.coupon != null ? strTrim(String(notes.coupon), 128) : null,

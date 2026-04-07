@@ -217,6 +217,9 @@ app.post('/api/checkout/kundli/order', async (req, res) => {
   const phone = String(b.phone ?? '').replace(/\s+/g, '');
   const dob = String(b.dob ?? '').trim();
   const tob = String(b.tob ?? '').trim();
+  const genderRaw = String(b.gender ?? '')
+    .trim()
+    .toLowerCase();
   const birthPlace = String(b.birth_place ?? '').trim();
   const language = String(b.language ?? '').trim();
   const coupon = String(b.coupon ?? '').trim();
@@ -234,6 +237,11 @@ app.post('/api/checkout/kundli/order', async (req, res) => {
     });
     return;
   }
+  const allowedGender = { male: true, female: true, other: true };
+  if (!genderRaw || !allowedGender[genderRaw]) {
+    res.status(400).json({ ok: false, error: 'valid gender is required' });
+    return;
+  }
 
   const amount = getConfig().kundliAmountPaise;
   const currency = getConfig().currency;
@@ -247,6 +255,7 @@ app.post('/api/checkout/kundli/order', async (req, res) => {
     customer_phone: strTrim(phone, 20),
     dob: strTrim(dob, 32),
     tob: strTrim(tob, 16),
+    gender: strTrim(genderRaw, 32),
     birth_place: strTrim(birthPlace, 200),
     language: strTrim(language, 32),
     coupon: strTrim(coupon, 64),

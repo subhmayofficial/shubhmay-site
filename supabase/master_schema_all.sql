@@ -119,6 +119,7 @@ CREATE TABLE v2.orders (
   dob date,
   tob time,
   birth_place text,
+  gender text,
   language text,
   coupon text,
   razorpay_notes jsonb,
