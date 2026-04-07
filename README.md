@@ -1,4 +1,4 @@
-# VedGuide — site + API
+# Shubhmay — site + API
 
 Monorepo layout: **static site** (HTML/CSS/JS at repo root) and **Node API** in `server/`. Production can run both together with `SERVE_STATIC=1`.
 

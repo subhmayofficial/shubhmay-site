@@ -66,7 +66,7 @@ const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use((req, res, next) => {
-  res.setHeader('X-Powered-By', 'VedGuide-Node-API');
+  res.setHeader('X-Powered-By', 'Shubhmay-Node-API');
   next();
 });
 
@@ -250,6 +250,7 @@ app.post('/api/checkout/kundli/order', async (req, res) => {
 
   const notes = {
     product: 'premium_kundli_report',
+    brand: 'Shubhmay',
     customer_name: strTrim(name, 200),
     customer_email: strTrim(email, 200),
     customer_phone: strTrim(phone, 20),
@@ -948,7 +949,7 @@ if (serveStatic) {
 
 const port = getConfig().port;
 app.listen(port, () => {
-  console.log(`VedGuide API listening on http://127.0.0.1:${port}`);
+  console.log(`Shubhmay API listening on http://127.0.0.1:${port}`);
   if (serveStatic) {
     console.log(`Open http://127.0.0.1:${port}/ — static site + /api same origin (VPS-like)`);
   }

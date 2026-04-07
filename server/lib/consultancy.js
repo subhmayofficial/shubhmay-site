@@ -150,6 +150,7 @@ export async function handleConsultancyOrder(cfg, body) {
       receipt: `consult_${Math.floor(Date.now() / 1000)}`,
       notes: {
         product: 'consultancy',
+        brand: 'Shubhmay',
         plan_code: plan.code,
         duration_minutes: String(plan.durationMinutes),
         slot_start: slotStart,

@@ -1,4 +1,4 @@
-# https://vedguide.com — non-www canonical
+# https://shubhmay.com — non-www canonical
 User-agent: *
 Allow: /
 
@@ -10,4 +10,4 @@ Disallow: /waste/
 # App / backend paths (not public HTML)
 Disallow: /supabase/
 
-Sitemap: https://vedguide.com/sitemap.xml
+Sitemap: https://shubhmay.com/sitemap.xml

@@ -10,7 +10,8 @@
     };
   })();
 
-  var STORAGE_KEY = 'vedguide_admin_secret';
+  var STORAGE_KEY = 'shubhmay_admin_secret';
+  var LEGACY_ADMIN_SECRET_KEY = 'vedguide_admin_secret';
   var titles = {
     dashboard: 'Dashboard',
     orders: 'Orders',
@@ -43,17 +44,24 @@
 
   function migrateStorage() {
     try {
-      var ss = sessionStorage.getItem(STORAGE_KEY);
-      if (ss && !localStorage.getItem(STORAGE_KEY)) {
+      var ss =
+        sessionStorage.getItem(STORAGE_KEY) || sessionStorage.getItem(LEGACY_ADMIN_SECRET_KEY);
+      if (ss && !localStorage.getItem(STORAGE_KEY) && !localStorage.getItem(LEGACY_ADMIN_SECRET_KEY)) {
         localStorage.setItem(STORAGE_KEY, ss);
         sessionStorage.removeItem(STORAGE_KEY);
+        sessionStorage.removeItem(LEGACY_ADMIN_SECRET_KEY);
+      }
+      var leg = localStorage.getItem(LEGACY_ADMIN_SECRET_KEY);
+      if (leg && !localStorage.getItem(STORAGE_KEY)) {
+        localStorage.setItem(STORAGE_KEY, leg);
+        localStorage.removeItem(LEGACY_ADMIN_SECRET_KEY);
       }
     } catch (e) {}
   }
 
   function loadStoredSecret() {
     try {
-      return localStorage.getItem(STORAGE_KEY) || '';
+      return localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_ADMIN_SECRET_KEY) || '';
     } catch (e) {
       return '';
     }
@@ -61,8 +69,13 @@
 
   function saveStoredSecret(s) {
     try {
-      if (s) localStorage.setItem(STORAGE_KEY, s);
-      else localStorage.removeItem(STORAGE_KEY);
+      if (s) {
+        localStorage.setItem(STORAGE_KEY, s);
+        localStorage.removeItem(LEGACY_ADMIN_SECRET_KEY);
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(LEGACY_ADMIN_SECRET_KEY);
+      }
     } catch (e) {}
   }
 
@@ -1498,6 +1511,7 @@
       kvRow('Receipt', o.receipt) +
       kvRow('Date of birth', o.dob) +
       kvRow('Time of birth', o.tob) +
+      kvRow('Gender', o.gender) +
       kvRow('Birth place', o.birth_place) +
       kvRow('Report language', o.language) +
       kvRow('Coupon', o.coupon) +
@@ -4243,18 +4257,23 @@
   }
 
   (function wireSettingsAndHealth() {
-    var GTM_KEY = 'vedguide_admin_gtm_id';
+    var GTM_KEY = 'shubhmay_admin_gtm_id';
+    var LEGACY_GTM_KEY = 'vedguide_admin_gtm_id';
     var inp = document.getElementById('gtmIdInput');
     var saveBtn = document.getElementById('gtmSaveBtn');
     var checkBtn = document.getElementById('gtmCheckBtn');
     var resEl = document.getElementById('gtmCheckResult');
     try {
-      if (inp && localStorage.getItem(GTM_KEY)) inp.value = localStorage.getItem(GTM_KEY);
+      if (inp) {
+        var gtmStored = localStorage.getItem(GTM_KEY) || localStorage.getItem(LEGACY_GTM_KEY);
+        if (gtmStored) inp.value = gtmStored;
+      }
     } catch (e) {}
     if (saveBtn && inp) {
       saveBtn.addEventListener('click', function () {
         try {
           localStorage.setItem(GTM_KEY, inp.value.trim());
+          localStorage.removeItem(LEGACY_GTM_KEY);
           if (resEl) resEl.textContent = 'Saved in this browser only. Add the same snippet on the live site.';
         } catch (e) {
           if (resEl) resEl.textContent = 'Could not save.';

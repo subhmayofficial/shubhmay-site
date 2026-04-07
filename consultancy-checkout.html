@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Consultancy Checkout — VedGuide</title>
+  <title>Consultancy Checkout — Shubhmay</title>
   <link rel="icon" href="/favicon/favicon.ico" sizes="any" />
   <style>
     :root {
@@ -607,8 +607,13 @@
             var options = {
               key: ord.keyId,
               order_id: ord.orderId,
-              name: 'VedGuide Consultancy',
-              description: (activePlan.name || 'Consultancy') + ' · ' + (activePlan.durationMinutes || 0) + ' mins',
+              name: 'Shubhmay Consultancy',
+              description:
+                'Shubhmay — ' +
+                (activePlan.name || 'Consultancy') +
+                ' · ' +
+                (activePlan.durationMinutes || 0) +
+                ' mins',
               prefill: { name: name, email: email, contact: phone },
               handler: function (response) {
                 confirmBtn.textContent = 'Confirming booking…';

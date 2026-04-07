@@ -1,5 +1,5 @@
 /**
- * VedGuide unified tracking — all events go through /api/track/* (v2 DB).
+ * Shubhmay site unified tracking — all events go through /api/track/* (v2 DB).
  * Load once per page: <script src="/js/vedguide-track.js" defer></script>
  */
 (function (global) {
