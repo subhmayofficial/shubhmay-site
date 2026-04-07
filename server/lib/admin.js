@@ -50,12 +50,37 @@ async function firstSitePathFromVisitorTimeline(cfg, row) {
 
 const ADMIN_TZ = 'Asia/Kolkata';
 
+// Do not SELECT orders.gender: some DBs pre-migration lack the column. Fill from razorpay_notes instead.
 export const ADMIN_ORDERS_SELECT =
-  'id,customer_id,lead_id,person_profile_id,abandoned_checkout_id,product_slug,razorpay_order_id,razorpay_payment_id,receipt,amount_paise,currency,payment_status,order_status,dob,tob,gender,birth_place,language,coupon,paid_at,created_at,updated_at,razorpay_notes,customers(name,email,phone,is_paying_customer,first_paid_at,total_spent_paise,created_at),leads!orders_lead_id_fkey(session_id,utm_source,utm_medium,utm_campaign,landing_path,referrer,source_page,lead_status,first_seen_at,last_seen_at),abandoned_checkouts!orders_abandoned_checkout_id_fkey(checkout_session_id,stage,abandoned_at,last_event_at,utm_source,utm_medium,utm_campaign),person_profiles(id,canonical_name,canonical_email,canonical_phone,first_touch_path,last_touch_path,lifecycle_stage,total_orders,total_revenue_paise)';
+  'id,customer_id,lead_id,person_profile_id,abandoned_checkout_id,product_slug,razorpay_order_id,razorpay_payment_id,receipt,amount_paise,currency,payment_status,order_status,dob,tob,birth_place,language,coupon,paid_at,created_at,updated_at,razorpay_notes,customers(name,email,phone,is_paying_customer,first_paid_at,total_spent_paise,created_at),leads!orders_lead_id_fkey(session_id,utm_source,utm_medium,utm_campaign,landing_path,referrer,source_page,lead_status,first_seen_at,last_seen_at),abandoned_checkouts!orders_abandoned_checkout_id_fkey(checkout_session_id,stage,abandoned_at,last_event_at,utm_source,utm_medium,utm_campaign),person_profiles(id,canonical_name,canonical_email,canonical_phone,first_touch_path,last_touch_path,lifecycle_stage,total_orders,total_revenue_paise)';
 
 // visitors!leads_visitor_id_fkey — disambiguate from visitors.converted_lead_id → leads (PGRST201)
 export const ADMIN_LEADS_SELECT =
-  'id,session_id,email,name,phone,visitor_id,person_profile_id,source_page,landing_path,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term,user_agent,client_language,screen_width,screen_height,lead_status,converted_order_id,first_seen_at,last_seen_at,intent_score,intent_tier,meta,created_at,updated_at,visitors!leads_visitor_id_fkey(id,session_id,converted_lead_id,conversion_at,conversion_source),lead_events(id,session_id,event_type,event_name,stage,path,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term,meta,created_at),orders!orders_lead_id_fkey(id,product_slug,amount_paise,currency,payment_status,order_status,paid_at,created_at,razorpay_order_id,razorpay_payment_id,receipt,coupon,dob,tob,gender),abandoned_checkouts!abandoned_checkouts_lead_id_fkey(id,checkout_session_id,stage,product_slug,amount_paise,currency,last_event_at,abandoned_at,converted_order_id,converted_at,razorpay_order_id,referrer,landing_path),consultancy_bookings!consultancy_bookings_lead_id_fkey(id,plan_code,plan_name,duration_minutes,amount_paise,currency,status,payment_status,slot_start,slot_end,razorpay_order_id,created_at),person_profiles(id,canonical_name,canonical_email,canonical_phone,first_touch_path,last_touch_path,lead_status,lifecycle_stage,total_orders,total_revenue_paise)';
+  'id,session_id,email,name,phone,visitor_id,person_profile_id,source_page,landing_path,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term,user_agent,client_language,screen_width,screen_height,lead_status,converted_order_id,first_seen_at,last_seen_at,intent_score,intent_tier,meta,created_at,updated_at,visitors!leads_visitor_id_fkey(id,session_id,converted_lead_id,conversion_at,conversion_source),lead_events(id,session_id,event_type,event_name,stage,path,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term,meta,created_at),orders!orders_lead_id_fkey(id,product_slug,amount_paise,currency,payment_status,order_status,paid_at,created_at,razorpay_order_id,razorpay_payment_id,receipt,coupon,dob,tob,razorpay_notes),abandoned_checkouts!abandoned_checkouts_lead_id_fkey(id,checkout_session_id,stage,product_slug,amount_paise,currency,last_event_at,abandoned_at,converted_order_id,converted_at,razorpay_order_id,referrer,landing_path),consultancy_bookings!consultancy_bookings_lead_id_fkey(id,plan_code,plan_name,duration_minutes,amount_paise,currency,status,payment_status,slot_start,slot_end,razorpay_order_id,created_at),person_profiles(id,canonical_name,canonical_email,canonical_phone,first_touch_path,last_touch_path,lead_status,lifecycle_stage,total_orders,total_revenue_paise)';
+
+function enrichOrderGenderFromNotes(o) {
+  if (!o || typeof o !== 'object') return o;
+  if (o.gender != null && String(o.gender).trim() !== '') return o;
+  const notes = o.razorpay_notes;
+  if (notes && typeof notes === 'object') {
+    const g = notes.gender;
+    if (g != null && String(g).trim() !== '') o.gender = strTrim(String(g), 32);
+  }
+  return o;
+}
+
+function enrichOrdersInArray(list) {
+  if (!Array.isArray(list)) return;
+  for (const row of list) enrichOrderGenderFromNotes(row);
+}
+
+function enrichLeadsOrdersEmbedded(rows) {
+  if (!Array.isArray(rows)) return;
+  for (const lead of rows) {
+    const ords = lead.orders;
+    if (Array.isArray(ords)) for (const o of ords) enrichOrderGenderFromNotes(o);
+  }
+}
 
 export const ADMIN_VISITORS_SELECT =
   'id,session_id,email,name,phone,person_profile_id,source_page,landing_path,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term,user_agent,client_language,screen_width,screen_height,first_seen_at,last_seen_at,converted_lead_id,conversion_at,conversion_source,intent_score,intent_tier,meta,created_at,updated_at,person_profiles(id,canonical_name,canonical_email,canonical_phone,first_touch_path,last_touch_path,lead_status,lifecycle_stage,total_orders,total_revenue_paise)';
@@ -557,9 +582,11 @@ export async function adminListOrders(cfg, q) {
   const r = await supabaseGetRange(cfg, path, pg.range);
   if (r.code >= 200 && r.code < 300) {
     const rows = JSON.parse(r.body || '[]');
+    const list = Array.isArray(rows) ? rows : [];
+    enrichOrdersInArray(list);
     return {
       ok: true,
-      rows: Array.isArray(rows) ? rows : [],
+      rows: list,
       total: parseContentRangeTotal(r.contentRange),
       page: pg.page,
       perPage: pg.perPage,
@@ -675,13 +702,18 @@ export async function adminProfileDetail(cfg, profileId) {
   const touches = timelineFirstAndLastTouch(events);
   const drops = deriveDropOffs(events);
 
+  const leadsRows = JSON.parse(leads.body || '[]') || [];
+  const ordersRows = JSON.parse(orders.body || '[]') || [];
+  enrichLeadsOrdersEmbedded(leadsRows);
+  enrichOrdersInArray(ordersRows);
+
   return {
     ok: true,
     profile: { ...profile, ...touches, latest_drop: drops[drops.length - 1] || null },
     visitors: JSON.parse(visitors.body || '[]') || [],
-    leads: JSON.parse(leads.body || '[]') || [],
+    leads: leadsRows,
     abandonedCheckouts: JSON.parse(abandoned.body || '[]') || [],
-    orders: JSON.parse(orders.body || '[]') || [],
+    orders: ordersRows,
     consultancyBookings: JSON.parse(bookings.body || '[]') || [],
     customers: JSON.parse(customers.body || '[]') || [],
     events,
@@ -724,9 +756,11 @@ export async function adminListLeads(cfg, q) {
   const r = await supabaseGetRange(cfg, path, pg.range);
   if (r.code >= 200 && r.code < 300) {
     const rows = JSON.parse(r.body || '[]');
+    const list = Array.isArray(rows) ? rows : [];
+    enrichLeadsOrdersEmbedded(list);
     return {
       ok: true,
-      rows: Array.isArray(rows) ? rows : [],
+      rows: list,
       total: parseContentRangeTotal(r.contentRange),
       page: pg.page,
       perPage: pg.perPage,
