@@ -523,6 +523,16 @@
                                 </div>
                             </div>
                             <div class="form-group">
+                                <label for="gender">Gender <span style="color:#d9534f;">*</span></label>
+                                <select id="gender" name="gender" required>
+                                    <option value="" selected disabled>Select gender</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                    <option value="other">Other</option>
+                                </select>
+                                <p id="gender-error" class="form-error" role="alert" aria-live="polite" hidden></p>
+                            </div>
+                            <div class="form-group">
                                 <label for="birth_place">Birth place <span style="color:#d9534f;">*</span></label>
                                 <input type="text" id="birth_place" name="birth_place" placeholder="e.g. Mumbai, Maharashtra, India" required autocomplete="off" spellcheck="false">
                                 <p id="birth_place-error" class="form-error" role="alert" aria-live="polite" hidden></p>
@@ -629,6 +639,7 @@
             var phoneEl = document.getElementById('phone');
             var dobEl = document.getElementById('dob');
             var tobEl = document.getElementById('tob');
+            var genderEl = document.getElementById('gender');
             var birthPlaceEl = document.getElementById('birth_place');
             var languageEl = document.getElementById('language');
             var couponEl = document.getElementById('coupon');
@@ -639,6 +650,7 @@
             var phoneError = document.getElementById('phone-error');
             var dobError = document.getElementById('dob-error');
             var tobError = document.getElementById('tob-error');
+            var genderError = document.getElementById('gender-error');
             var birthPlaceError = document.getElementById('birth_place-error');
 
             var BASE_PRICE = 499;
@@ -906,6 +918,10 @@
                     showError(tobError, 'Please select your time of birth');
                     ok = false;
                 } else showError(tobError, '');
+                if (!genderEl.value) {
+                    showError(genderError, 'Please select your gender');
+                    ok = false;
+                } else showError(genderError, '');
                 var bp = birthPlaceEl.value.trim();
                 if (!bp) {
                     showError(birthPlaceError, 'Please enter your birth place');
@@ -953,6 +969,7 @@
                             phone: phoneEl.value.replace(/\s/g, ''),
                             dob: dobEl.value,
                             tob: tobEl.value,
+                            gender: genderEl.value,
                             birth_place: birthPlaceEl.value.trim(),
                             language: languageEl.value,
                             coupon: couponEl && couponEl.value ? couponEl.value.trim() : '',
