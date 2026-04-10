@@ -868,11 +868,14 @@ app.use('/api', (req, res) => {
   res.status(404).json({ ok: false, error: 'Unknown API route' });
 });
 
-/** Same-origin test: serve public_html like nginx does on VPS (site + /api on one port). */
-const serveStatic =
-  process.env.SERVE_STATIC === '1' ||
-  process.env.SERVE_STATIC === 'true' ||
-  process.env.SERVE_STATIC === 'yes';
+/** Serve public_html + /api on one port (VPS-style). In production, ON unless SERVE_STATIC=0. */
+function envServeStaticEnabled() {
+  const v = String(process.env.SERVE_STATIC || '').trim().toLowerCase();
+  if (v === '1' || v === 'true' || v === 'yes') return true;
+  if (v === '0' || v === 'false' || v === 'no') return false;
+  return process.env.NODE_ENV === 'production';
+}
+const serveStatic = envServeStaticEnabled();
 
 /** Clean URLs → real files (add nginx mirrors on production). */
 const URL_REWRITES = {
@@ -956,7 +959,9 @@ if (serveStatic) {
       },
     })
   );
-  console.log(`[static] Serving site from ${staticRoot} (set SERVE_STATIC=0 to API-only)`);
+  console.log(
+    `[static] Serving site from ${staticRoot} (SERVE_STATIC=0 or false for API-only; in production static is ON by default)`
+  );
 }
 
 const port = getConfig().port;
