@@ -22,6 +22,8 @@ export const SITE_PAGE_LABELS = {
   '/tools/metal': 'Metal finder',
   '/free-metal-finder-tool.html': 'Metal finder',
   '/metal-finder': 'Metal finder',
+  '/ringdhantu': 'Ring dhatu tool',
+  '/ringdhantu.html': 'Ring dhatu tool',
   '/freevedictools.html': 'Free tools',
   '/mahamantra.html': 'Mahamantra',
   '/tracking': 'Tracking test',

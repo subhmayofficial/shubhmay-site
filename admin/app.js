@@ -2975,6 +2975,73 @@
     return p.toString();
   }
 
+  function loadRingDhatuAnalytics() {
+    var strip = document.getElementById('analyticsRingDhatuStrip');
+    var hint = document.getElementById('analyticsRingDhatuHint');
+    if (!strip) return;
+    if (!canAuth()) {
+      strip.innerHTML = '<p class="detail-muted" style="grid-column:1/-1;">Connect admin to load.</p>';
+      if (hint)
+        hint.textContent =
+          'Unique sessions that opened the tool, completed a rashi→metal check, or clicked Free kundli (same date range as above).';
+      return;
+    }
+    strip.innerHTML = '<p class="detail-muted" style="grid-column:1/-1;">Loading…</p>';
+    fetch('/api/admin/analytics/ring-dhatu?' + buildPageAnalyticsQuery(), { headers: authHeaders() })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j || !j.ok) {
+          setStripTiles(strip, [{ label: 'Ring dhatu', value: '—', sub: (j && j.error) || 'Failed' }], null);
+          return;
+        }
+        var subHint =
+          (j.truncated ? 'Large range — counts may be partial. ' : '') +
+          'Sessions = distinct browsers. Visits = page_view on /ringdhantu. Check = rashi→metal result. CTA = Free kundli (main or sticky) toward /kundli-preview.';
+        if (hint) hint.textContent = subHint;
+        setStripTiles(
+          strip,
+          [
+            {
+              label: 'Tool visits (sessions)',
+              value: j.uniqueSessionsPageViews != null ? j.uniqueSessionsPageViews : '—',
+              sub: (j.pageViewEvents != null ? j.pageViewEvents : '—') + ' page_view events',
+            },
+            {
+              label: 'Metal check (sessions)',
+              value: j.uniqueSessionsMetalCheck != null ? j.uniqueSessionsMetalCheck : '—',
+              sub: (j.metalCheckEvents != null ? j.metalCheckEvents : '—') + ' rashi_selected',
+            },
+            {
+              label: 'Free kundli CTA (sessions)',
+              value: j.uniqueSessionsFreeKundliCta != null ? j.uniqueSessionsFreeKundliCta : '—',
+              sub:
+                (j.freeKundliCtaEvents != null ? j.freeKundliCtaEvents : '—') +
+                ' clicks' +
+                (j.ctaClickRatePercentVsVisits != null ? ' · ' + j.ctaClickRatePercentVsVisits + '% of visits' : ''),
+            },
+            {
+              label: 'CTA main vs sticky (sess.)',
+              value:
+                (j.uniqueSessionsCtaMain != null ? j.uniqueSessionsCtaMain : '—') +
+                ' / ' +
+                (j.uniqueSessionsCtaSticky != null ? j.uniqueSessionsCtaSticky : '—'),
+              sub:
+                (j.ctaMainEvents != null ? j.ctaMainEvents : '—') +
+                ' / ' +
+                (j.ctaStickyEvents != null ? j.ctaStickyEvents : '—') +
+                ' events',
+            },
+          ],
+          null
+        );
+      })
+      .catch(function () {
+        setStripTiles(strip, [{ label: 'Ring dhatu', value: '—', sub: 'Network error' }], null);
+      });
+  }
+
   function loadPageAnalytics() {
     var msg = document.getElementById('analyticsPagesMsg');
     var wrap = document.getElementById('analyticsPagesWrap');
@@ -2984,8 +3051,10 @@
       if (msg) setMsg(msg, 'Connect admin first.', true);
       if (wrap) wrap.hidden = true;
       if (detailCard) detailCard.hidden = true;
+      loadRingDhatuAnalytics();
       return;
     }
+    loadRingDhatuAnalytics();
     if (msg) setMsg(msg, 'Loading page analytics…', false);
     fetch('/api/admin/analytics/pages?' + buildPageAnalyticsQuery(), { headers: authHeaders() })
       .then(function (r) {

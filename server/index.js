@@ -56,6 +56,7 @@ import {
   adminRebuildProfilesNow,
 } from './lib/admin.js';
 import { adminPageAnalytics, adminPageAnalyticsDetail, adminTrafficDailySeries } from './lib/pageAnalytics.js';
+import { adminRingDhatuAnalytics } from './lib/ringDhatuAnalytics.js';
 import { getConnectionsSnapshot, runConnectionTests } from './lib/connectionsHealth.js';
 import { adminAcquisitionAnalytics } from './lib/acquisitionAnalytics.js';
 import { adminRealtimeAnalytics } from './lib/realtimeAnalytics.js';
@@ -602,6 +603,16 @@ app.get('/api/admin/analytics/pages', async (req, res) => {
   res.json(out);
 });
 
+app.get('/api/admin/analytics/ring-dhatu', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const out = await adminRingDhatuAnalytics(getConfig(), req.query);
+  if (!out.ok) {
+    res.status(502).json({ ok: false, error: out.error ?? 'Failed' });
+    return;
+  }
+  res.json(out);
+});
+
 app.get('/api/admin/analytics/traffic-series', async (req, res) => {
   if (!requireAdmin(req, res)) return;
   const out = await adminTrafficDailySeries(getConfig(), req.query);
@@ -871,6 +882,7 @@ const URL_REWRITES = {
   '/consultancy': '/consultancy.html',
   '/contact': '/contact-us.html',
   '/metal-finder': '/free-metal-finder-tool.html',
+  '/ringdhantu': '/ringdhantu.html',
   '/tools/metal': '/metal/index.html',
   '/kundli-preview': '/kundli-preview.html',
   /** Product URLs used in nav/CTAs — map to real files under site root */

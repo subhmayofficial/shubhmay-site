@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Finger Ring Dhatu Tool — Rashi se sahi metal | Shubhmay</title>
+  <meta name="description" content="Rashi se finger ring dhatu ka quick suggestion — free janam kundli preview ~2 minute me." />
+  <link rel="canonical" href="https://shubhmay.com/ringdhantu" />
+  <link rel="icon" href="/favicon/favicon.ico" sizes="any" />
+  <link rel="icon" href="/favicon/favicon-32x32.png" type="image/png" sizes="32x32" />
+  <link rel="icon" href="/favicon/favicon-16x16.png" type="image/png" sizes="16x16" />
+  <link rel="apple-touch-icon" href="/favicon/apple-touch-icon.png" sizes="180x180" />
+  <link rel="manifest" href="/favicon/site.webmanifest" />
+  <script>window.dataLayer = window.dataLayer || [];</script>
+  <script src="/js/vedguide-track.js"></script>
+  <script>
+    (function () {
+      VedGuideTrack.init({
+        sourcePage: 'ring-dhatu-tool',
+        eventType: 'ring_dhatu',
+        meta: { page: 'ring_dhatu', funnel: 'ring_dhatu' }
+      });
+      window._vedguideTrack = function (et, pl) {
+        VedGuideTrack.track(et, pl || {}, { eventType: 'ring_dhatu' });
+      };
+    })();
+  </script>
+  <script>
+    window.addEventListener('load', function () {
+      (function (w, d, s, l, i) {
+        w[l] = w[l] || []; w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+        var f = d.getElementsByTagName(s)[0], j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : '';
+        j.async = true; j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
+      })(window, document, 'script', 'dataLayer', 'GTM-MGBML6GZ');
+    });
+  </script>
+  <style>
+    :root {
+      --saffron: #d97706;
+      --gold: #b45309;
+      --gold-bright: #fbbf24;
+      --gold-dark: #92400e;
+      --cream: #fefce8;
+      --cream-dark: #fef9c3;
+      --white: #ffffff;
+      --text-dark: #1c1917;
+      --text-muted: #57534e;
+      --shadow-md: 0 12px 32px rgba(180, 83, 9, 0.15);
+      --radius: 14px;
+      --radius-lg: 18px;
+      --green: #16a34a;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text-dark);
+      background: linear-gradient(160deg, var(--cream) 0%, var(--cream-dark) 50%, #fde68a 100%);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      padding-bottom: 100px;
+    }
+    .navbar {
+      position: fixed; top: 0; left: 0; right: 0; height: 56px;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold) 50%, var(--saffron) 100%);
+      box-shadow: 0 4px 20px rgba(180, 83, 9, 0.3);
+      z-index: 200;
+    }
+    .navbar-logo {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 14px; font-weight: 700; letter-spacing: 0.1em;
+      color: #fff; text-transform: uppercase; text-decoration: none;
+    }
+    .navbar-label { font-size: 0.95rem; font-weight: 600; color: #fff; }
+    .wrapper { max-width: 480px; margin: 0 auto; padding: 72px 20px 32px; }
+    .card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 26px 22px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid rgba(180, 83, 9, 0.15);
+      margin-bottom: 18px;
+    }
+    .headline { font-size: 1.45rem; font-weight: 700; color: var(--text-dark); line-height: 1.25; margin-bottom: 10px; }
+    .sub { font-size: 0.98rem; color: var(--text-muted); line-height: 1.55; margin-bottom: 18px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; width: 100%;
+      padding: 15px 22px; font-size: 1.05rem; font-weight: 700;
+      color: #78350f;
+      background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 55%, #fcd34d 100%);
+      border: none; border-radius: var(--radius); cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.2s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn--ghost {
+      background: transparent; color: var(--text-muted);
+      border: 1px solid rgba(28, 25, 23, 0.2); font-weight: 600; margin-top: 10px;
+    }
+    .btn--kundli {
+      background: linear-gradient(135deg, #15803d 0%, #22c55e 45%, #4ade80 100%);
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      font-size: 0.92rem;
+      padding: 11px 16px;
+      box-shadow: 0 8px 24px rgba(22, 163, 74, 0.35);
+    }
+    .rashi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    @media (min-width: 500px) { .rashi-grid { grid-template-columns: repeat(3, 1fr); } }
+    .rashi-card {
+      background: var(--white);
+      border: 2px solid rgba(28, 25, 23, 0.08);
+      border-radius: var(--radius);
+      padding: 14px 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .rashi-card:hover { border-color: var(--saffron); box-shadow: 0 2px 12px rgba(180, 83, 9, 0.12); }
+    .rashi-icon-img { width: 36px; height: 36px; object-fit: contain; margin: 0 auto 8px; display: block; }
+    .rashi-name { font-weight: 600; font-size: 0.88rem; color: var(--text-dark); }
+    .step { display: none; }
+    .step.visible { display: block; animation: fadeIn 0.35s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    /* ── Result: visual-heavy ── */
+    .card--result { padding: 0; overflow: hidden; border: none; box-shadow: var(--shadow-md); }
+    .result-hero {
+      position: relative;
+      padding: 28px 20px 32px;
+      text-align: center;
+      overflow: hidden;
+    }
+    .result-hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 120% 80% at 50% -20%, rgba(251, 191, 36, 0.45), transparent 55%),
+        linear-gradient(165deg, #1c1410 0%, #3d2a1a 40%, #78350f 100%);
+      z-index: 0;
+    }
+    .result-hero[data-metal="gold"]::before {
+      background:
+        radial-gradient(ellipse 100% 70% at 50% 0%, rgba(251, 191, 36, 0.35), transparent 50%),
+        linear-gradient(165deg, #1a1208 0%, #422006 45%, #92400e 100%);
+    }
+    .result-hero[data-metal="silver"]::before {
+      background:
+        radial-gradient(ellipse 100% 70% at 50% 0%, rgba(226, 232, 240, 0.4), transparent 50%),
+        linear-gradient(165deg, #0f172a 0%, #1e293b 50%, #475569 100%);
+    }
+    .result-hero[data-metal="copper"]::before {
+      background:
+        radial-gradient(ellipse 100% 70% at 50% 0%, rgba(253, 186, 116, 0.35), transparent 50%),
+        linear-gradient(165deg, #1c1008 0%, #5c2e12 48%, #9a3412 100%);
+    }
+    .result-hero-deco {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0.5;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.08'%3E%3Ccircle cx='40' cy='40' r='38'/%3E%3Ccircle cx='40' cy='40' r='28'/%3E%3Ccircle cx='40' cy='40' r='18'/%3E%3C/g%3E%3C/svg%3E");
+      background-size: 80px 80px;
+    }
+    .result-hero-inner { position: relative; z-index: 2; }
+    .result-rashi-visual { margin-bottom: 18px; }
+    .result-avatar-ring {
+      position: relative;
+      width: 108px; height: 108px; margin: 0 auto 12px;
+      padding: 5px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(251,191,36,0.9), rgba(180,83,9,0.85));
+      box-shadow: 0 12px 40px rgba(0,0,0,0.35), inset 0 0 0 2px rgba(255,255,255,0.25);
+    }
+    .result-hero[data-metal="silver"] .result-avatar-ring {
+      background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+    }
+    .result-hero[data-metal="copper"] .result-avatar-ring {
+      background: linear-gradient(135deg, #fdba74, #c2410c);
+    }
+    .result-avatar-ring img {
+      width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
+      background: #fff;
+      position: relative;
+      z-index: 1;
+    }
+    .result-avatar-ring img.is-hidden { display: none !important; }
+    .result-avatar-emoji {
+      position: absolute;
+      inset: 5px;
+      border-radius: 50%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.75rem;
+      line-height: 1;
+      background: rgba(255,255,255,0.18);
+      z-index: 2;
+    }
+    .result-avatar-emoji.is-visible { display: flex; }
+    .result-rashi {
+      font-size: 1.15rem; font-weight: 700; color: #fff;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      margin: 0;
+    }
+    .result-planet {
+      font-size: 0.82rem; font-weight: 600; color: rgba(255,255,255,0.88);
+      text-shadow: 0 1px 6px rgba(0,0,0,0.3);
+      margin: 6px 0 0;
+      letter-spacing: 0.02em;
+    }
+    .result-metal-label {
+      font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase;
+      color: rgba(255,255,255,0.75); margin-bottom: 6px;
+    }
+    .result-ring-svg {
+      width: 120px; height: 56px; margin: 0 auto 8px;
+      display: block;
+      opacity: 0.95;
+    }
+    .result-metal {
+      font-size: 2rem; font-weight: 800;
+      color: #fff;
+      text-shadow: 0 2px 16px rgba(0,0,0,0.25);
+      margin: 0 0 14px;
+      line-height: 1.15;
+    }
+    .metal-swatches {
+      display: flex; justify-content: center; gap: 14px; align-items: center;
+    }
+    .swatch {
+      width: 44px; height: 44px; border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.35);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .swatch--gold { background: linear-gradient(145deg, #fde68a, #d97706); }
+    .swatch--silver { background: linear-gradient(145deg, #f8fafc, #94a3b8); }
+    .swatch--copper { background: linear-gradient(145deg, #fdba74, #9a3412); }
+    .swatch.active {
+      transform: scale(1.12);
+      border-color: #fff;
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.6), 0 8px 24px rgba(0,0,0,0.35);
+    }
+    .result-body { padding: 20px 22px 24px; background: var(--white); }
+    .result-blurb {
+      font-size: 0.9rem; color: var(--text-muted); line-height: 1.55;
+      margin: 0 0 14px; text-align: center;
+    }
+    .result-trait-pills {
+      display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+      margin-bottom: 14px;
+    }
+    .trait-pill {
+      font-size: 0.78rem; font-weight: 600;
+      padding: 8px 12px; border-radius: 999px;
+      background: linear-gradient(145deg, #fffbeb, #fef3c7);
+      border: 1px solid rgba(180, 83, 9, 0.2);
+      color: var(--gold-dark);
+    }
+    .note {
+      background: #fff8e6;
+      border-left: 4px solid var(--gold);
+      padding: 12px 14px;
+      font-size: 0.88rem;
+      color: var(--text-dark);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      margin: 0 0 16px;
+    }
+    .micro-benefit { font-size: 0.88rem; color: var(--text-muted); line-height: 1.45; margin-top: 12px; }
+    .kundli-strip-title {
+      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.16em;
+      color: var(--green); font-weight: 800; text-align: center; margin-bottom: 12px;
+    }
+    .kundli-tiles {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 360px) {
+      .kundli-tiles { grid-template-columns: 1fr; }
+    }
+    .kundli-tile {
+      background: linear-gradient(180deg, #f0fdf4 0%, #ecfdf5 100%);
+      border: 1px solid rgba(22, 163, 74, 0.2);
+      border-radius: 12px;
+      padding: 12px 8px;
+      text-align: center;
+    }
+    .kundli-tile-icon {
+      width: 40px; height: 40px; margin: 0 auto 8px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem;
+      background: rgba(22, 163, 74, 0.12);
+    }
+    .kundli-tile h4 {
+      font-size: 0.68rem; font-weight: 800; color: var(--text-dark);
+      line-height: 1.25; margin: 0 0 4px;
+    }
+    .kundli-tile p {
+      font-size: 0.68rem; color: var(--text-muted); line-height: 1.35; margin: 0;
+    }
+    .cta-stack { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+    .cta-hint { font-size: 0.78rem; color: var(--text-muted); text-align: center; margin-top: 6px; }
+    .link-back { display: inline-block; margin-top: 14px; font-size: 0.9rem; color: var(--gold-dark); font-weight: 600; cursor: pointer; background: none; border: none; text-decoration: underline; }
+    .sticky-cta {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+      background: linear-gradient(180deg, rgba(254, 252, 232, 0) 0%, rgba(254, 252, 232, 0.95) 20%, #fef9c3 100%);
+      z-index: 150;
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.08);
+    }
+    .sticky-cta .btn { max-width: 480px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MGBML6GZ" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+
+  <header class="navbar">
+    <a class="navbar-logo" href="/">Shubhmay</a>
+    <span class="navbar-label">Ring Dhatu</span>
+  </header>
+
+  <main class="wrapper">
+    <section class="step visible" id="step-intro" data-step="intro">
+      <div class="card">
+        <h1 class="headline">Finger ring — kaun sa dhatu?</h1>
+        <p class="sub">
+          Apni <strong>janam rashi</strong> chuniye — finger ring ke liye <strong>Gold / Silver / Copper</strong> ka
+          ek <em>general</em> idea milega.
+        </p>
+        <p class="micro-benefit">Chart aur graha ka quick view chaho to <strong>free kundli</strong> ~2 minute me — instant preview.</p>
+        <button type="button" class="btn" id="btn-start" style="margin-top:16px;">Rashi select karein</button>
+        <p class="sub" style="margin-top:12px;margin-bottom:0;font-size:0.85rem;">Free tool · ~30 seconds</p>
+      </div>
+    </section>
+
+    <section class="step" id="step-rashi" data-step="rashi">
+      <div class="card">
+        <h2 class="headline" style="font-size:1.2rem;">Apni rashi chunein</h2>
+        <p class="sub" style="margin-bottom:14px;">Neeche 12 rashi mein se ek tap karein.</p>
+        <div class="rashi-grid" id="rashiGrid" role="group" aria-label="Rashi selection"></div>
+        <button type="button" class="link-back" id="btn-back-intro">← Wapas</button>
+      </div>
+    </section>
+
+    <section class="step" id="step-result" data-step="result">
+      <div class="card card--result">
+        <div class="result-hero" id="resultHero" data-metal="gold">
+          <div class="result-hero-deco" aria-hidden="true"></div>
+          <div class="result-hero-inner">
+            <div class="result-rashi-visual">
+              <div class="result-avatar-ring">
+                <img id="resultRashiImg" src="" alt="" width="96" height="96" decoding="async" />
+                <span id="resultRashiEmoji" class="result-avatar-emoji" aria-hidden="true"></span>
+              </div>
+              <p class="result-rashi" id="resultRashiLabel"></p>
+              <p class="result-planet" id="resultPlanet"></p>
+            </div>
+            <p class="result-metal-label">Finger ring · suggested dhatu (swami graha ke anusaar)</p>
+            <svg class="result-ring-svg" viewBox="0 0 120 56" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <ellipse cx="60" cy="40" rx="52" ry="14" stroke="rgba(255,255,255,0.5)" stroke-width="2.5"/>
+              <ellipse cx="60" cy="38" rx="40" ry="11" stroke="rgba(251,191,36,0.85)" stroke-width="2"/>
+              <circle cx="60" cy="22" r="6" fill="rgba(255,255,255,0.9)"/>
+            </svg>
+            <p class="result-metal" id="resultMetal"></p>
+            <div class="metal-swatches" aria-hidden="true">
+              <span class="swatch swatch--gold" title="Gold"></span>
+              <span class="swatch swatch--silver" title="Silver"></span>
+              <span class="swatch swatch--copper" title="Copper"></span>
+            </div>
+          </div>
+        </div>
+        <div class="result-body">
+          <p class="result-blurb">
+            Yeh dhatu aapki rashi ke <strong>swami graha</strong> (ruling planet) se juda general ring-metal guide hai — design, weight aur exact suitability
+            ke liye poora birth chart helpful hota hai.
+          </p>
+          <div class="result-trait-pills" id="resultTraitPills"></div>
+          <div class="note">
+            <strong>Yaad rakhein:</strong> Sirf rashi se poora faisla mat lijiye — janam samay, lagna aur grah mil kar
+            sahi picture banate hain.
+          </div>
+          <p class="kundli-strip-title">Aage kya dekhein</p>
+          <div class="kundli-tiles">
+            <div class="kundli-tile">
+              <div class="kundli-tile-icon" aria-hidden="true">📿</div>
+              <h4>Janam chart</h4>
+              <p>Lagna aur gharon ka quick layout</p>
+            </div>
+            <div class="kundli-tile">
+              <div class="kundli-tile-icon" aria-hidden="true">✨</div>
+              <h4>Graha</h4>
+              <p>Kaun sa grah kis rashi me</p>
+            </div>
+            <div class="kundli-tile">
+              <div class="kundli-tile-icon" aria-hidden="true">⏱</div>
+              <h4>~2 min</h4>
+              <p>Free basic preview</p>
+            </div>
+          </div>
+          <div class="cta-stack">
+            <a class="btn btn--kundli" id="cta-free-kundli" href="/kundli-preview">Free kundli check →</a>
+            <p class="cta-hint">~2 min · instant</p>
+          </div>
+          <button type="button" class="btn btn--ghost" id="btn-again">Dusri rashi try karein</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="sticky-cta" id="stickyCta">
+    <a class="btn btn--kundli" href="/kundli-preview">Free kundli check →</a>
+  </div>
+
+  <script>
+    (function () {
+      var RASHI_TRAITS = {
+        mesh: ['Bold nature', 'Leadership quality', 'Energy high'],
+        vrishabh: ['Stable mindset', 'Artistic sense', 'Patience strong'],
+        mithun: ['Tez dimaag', 'Communication strong', 'Dual nature'],
+        kark: ['Emotional depth', 'Intuition strong', 'Family-oriented'],
+        singh: ['Confident', 'Creative', 'Natural leader'],
+        kanya: ['Detail-oriented', 'Analytical', 'Practical'],
+        tula: ['Balanced thinking', 'Diplomatic', 'Aesthetic sense'],
+        vrishchik: ['Deep focus', 'Transformation', 'Passionate'],
+        dhanu: ['Philosophical', 'Optimistic', 'Adventurous'],
+        makar: ['Disciplined', 'Ambitious', 'Practical'],
+        kumbh: ['Innovative', 'Independent', 'Humanitarian'],
+        meen: ['Intuitive', 'Compassionate', 'Creative']
+      };
+      /** Rashi → ruling planet → suggested finger-ring dhatu (tool logic). */
+      var RASHI_METAL_MAP = {
+        mesh: { metal: 'Copper', planet: 'Mars', planetHi: 'मंगल' },
+        vrishabh: { metal: 'Silver', planet: 'Venus', planetHi: 'शुक्र' },
+        mithun: { metal: 'Silver', planet: 'Mercury', planetHi: 'बुध' },
+        kark: { metal: 'Silver', planet: 'Moon', planetHi: 'चंद्र' },
+        singh: { metal: 'Gold', planet: 'Sun', planetHi: 'सूर्य' },
+        kanya: { metal: 'Silver', planet: 'Mercury', planetHi: 'बुध' },
+        tula: { metal: 'Silver', planet: 'Venus', planetHi: 'शुक्र' },
+        vrishchik: { metal: 'Copper', planet: 'Mars', planetHi: 'मंगल' },
+        dhanu: { metal: 'Gold', planet: 'Jupiter', planetHi: 'बृहस्पति' },
+        makar: { metal: 'Silver', planet: 'Saturn', planetHi: 'शनि' },
+        kumbh: { metal: 'Silver', planet: 'Saturn', planetHi: 'शनि' },
+        meen: { metal: 'Gold', planet: 'Jupiter', planetHi: 'बृहस्पति' }
+      };
+      var RASHI_NAMES = {
+        mesh: 'मेष (Mesh)', vrishabh: 'वृषभ (Vrishabh)', mithun: 'मिथुन (Mithun)', kark: 'कर्क (Kark)',
+        singh: 'सिंह (Singh)', kanya: 'कन्या (Kanya)', tula: 'तुला (Tula)', vrishchik: 'वृश्चिक (Vrishchik)',
+        dhanu: 'धनु (Dhanu)', makar: 'मकर (Makar)', kumbh: 'कुंभ (Kumbh)', meen: 'मीन (Meen)'
+      };
+      var METAL_NAMES = { Gold: 'सोना (Gold)', Silver: 'चाँदी (Silver)', Copper: 'तांबा (Copper)' };
+      function metalSlug(m) {
+        if (m === 'Gold') return 'gold';
+        if (m === 'Silver') return 'silver';
+        return 'copper';
+      }
+      var RASHI_IMAGES = {
+        mesh: 'assets/images/Zodiac1.webp',
+        vrishabh: 'assets/images/Vrisabh.webp',
+        mithun: 'assets/images/Gemini.webp',
+        kark: 'assets/images/Kark.webp',
+        singh: 'assets/images/singh.webp',
+        kanya: 'assets/images/Kanya.webp',
+        tula: 'assets/images/tula.webp',
+        vrishchik: 'assets/images/Vrishchik.webp',
+        dhanu: 'assets/images/dhanu.webp',
+        makar: 'assets/images/makar.webp',
+        kumbh: 'assets/images/kumbh.webp',
+        meen: 'assets/images/meen.webp'
+      };
+      var RASHI_EMOJI = {
+        mesh: '♈', vrishabh: '♉', mithun: '♊', kark: '♋', singh: '♌', kanya: '♍',
+        tula: '♎', vrishchik: '♏', dhanu: '♐', makar: '♑', kumbh: '♒', meen: '♓'
+      };
+      function setResultRashiAvatar(key) {
+        var imgEl = document.getElementById('resultRashiImg');
+        var emojiEl = document.getElementById('resultRashiEmoji');
+        if (!imgEl || !emojiEl) return;
+        function showEmoji() {
+          imgEl.classList.add('is-hidden');
+          emojiEl.classList.add('is-visible');
+          emojiEl.textContent = RASHI_EMOJI[key] || '✦';
+          emojiEl.setAttribute('aria-hidden', 'false');
+          imgEl.setAttribute('aria-hidden', 'true');
+        }
+        function showImg() {
+          imgEl.classList.remove('is-hidden');
+          emojiEl.classList.remove('is-visible');
+          emojiEl.textContent = '';
+          emojiEl.setAttribute('aria-hidden', 'true');
+          imgEl.removeAttribute('aria-hidden');
+        }
+        imgEl.onload = showImg;
+        imgEl.onerror = showEmoji;
+        emojiEl.classList.remove('is-visible');
+        emojiEl.textContent = '';
+        if (RASHI_IMAGES[key]) {
+          imgEl.src = RASHI_IMAGES[key];
+          imgEl.alt = RASHI_NAMES[key] || '';
+          if (imgEl.complete && imgEl.naturalWidth > 0) showImg();
+        } else {
+          imgEl.removeAttribute('src');
+          showEmoji();
+        }
+      }
+
+      function emit(name, data) {
+        try {
+          window.dataLayer = window.dataLayer || [];
+          window.dataLayer.push(Object.assign({ event: name }, data || {}));
+          if (window._vedguideTrack) window._vedguideTrack(name, Object.assign({ page: 'ring_dhatu' }, data || {}));
+        } catch (e) {}
+      }
+
+      function showStep(id) {
+        document.querySelectorAll('.step').forEach(function (s) { s.classList.remove('visible'); });
+        var el = document.getElementById(id);
+        if (el) el.classList.add('visible');
+        emit('step_view', { step: id });
+      }
+
+      var grid = document.getElementById('rashiGrid');
+      Object.keys(RASHI_METAL_MAP).forEach(function (key) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'rashi-card';
+        btn.setAttribute('aria-label', RASHI_NAMES[key] || key);
+        var img = RASHI_IMAGES[key]
+          ? '<img src="' + RASHI_IMAGES[key] + '" alt="" class="rashi-icon-img" loading="lazy">'
+          : '';
+        btn.innerHTML = img + '<span class="rashi-name">' + (RASHI_NAMES[key] || key) + '</span>';
+        btn.addEventListener('click', function () {
+          var row = RASHI_METAL_MAP[key];
+          var m = row.metal;
+          var slug = metalSlug(m);
+          document.getElementById('resultRashiLabel').textContent = RASHI_NAMES[key];
+          var planetEl = document.getElementById('resultPlanet');
+          if (planetEl && row.planet) {
+            planetEl.textContent = 'Swami graha: ' + row.planetHi + ' (' + row.planet + ')';
+          }
+          document.getElementById('resultMetal').textContent = METAL_NAMES[m] || m;
+          setResultRashiAvatar(key);
+          var hero = document.getElementById('resultHero');
+          if (hero) hero.setAttribute('data-metal', slug);
+          document.querySelectorAll('.metal-swatches .swatch').forEach(function (sw) {
+            sw.classList.remove('active');
+            if (sw.classList.contains('swatch--' + slug)) sw.classList.add('active');
+          });
+          var pills = document.getElementById('resultTraitPills');
+          pills.innerHTML = '';
+          (RASHI_TRAITS[key] || []).forEach(function (t) {
+            var sp = document.createElement('span');
+            sp.className = 'trait-pill';
+            sp.textContent = t;
+            pills.appendChild(sp);
+          });
+          emit('rashi_selected', { rashi: key, metal: m, ruling_planet: row.planet, tool: 'ring_dhatu' });
+          showStep('step-result');
+        });
+        grid.appendChild(btn);
+      });
+
+      document.getElementById('btn-start').addEventListener('click', function () {
+        emit('cta_click', { cta: 'start_rashi_select' });
+        showStep('step-rashi');
+      });
+      document.getElementById('btn-back-intro').addEventListener('click', function () {
+        showStep('step-intro');
+      });
+      document.getElementById('btn-again').addEventListener('click', function () {
+        showStep('step-rashi');
+      });
+
+      document.getElementById('cta-free-kundli').addEventListener('click', function () {
+        emit('cta_click', { cta: 'free_kundli_preview', href: this.getAttribute('href') });
+      });
+      document.querySelector('.sticky-cta a').addEventListener('click', function () {
+        emit('cta_click', { cta: 'sticky_free_kundli', href: this.getAttribute('href') });
+      });
+    })();
+  </script>
+</body>
+</html>
