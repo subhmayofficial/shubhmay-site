@@ -889,8 +889,9 @@ const URL_REWRITES = {
   '/tools/metal': '/metal/index.html',
   '/kundli-preview': '/kundli-preview.html',
   /** Product URLs used in nav/CTAs — map to real files under site root */
-  '/products/consultancy-checkout': '/consultancy-checkout.html',
-  '/products/kundli-checkout': '/lp/kundli-checkout/index.html',
+  '/products/consultancy-checkout': '/products/consultancy-checkout/index.html',
+  '/products/kundli-checkout': '/products/kundli-checkout/index.html',
+  '/lp/kundli-checkout': '/lp/kundli-checkout/index.html',
 };
 
 if (serveStatic) {
